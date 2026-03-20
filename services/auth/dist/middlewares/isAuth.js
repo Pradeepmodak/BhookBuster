@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import TryCatch from "./trycatch.js";
+import User from "../model/User.js";
 ;
 export const isAuth = async (req, res, next) => {
     try {
@@ -32,3 +34,32 @@ export const isAuth = async (req, res, next) => {
         });
     }
 };
+const allowedRoles = ["customer", "rider", "seller"];
+export const addUserRole = TryCatch(async (req, res, next) => {
+    if (!req.user?._id) {
+        return res.status(401).json({
+            message: "Unauthorized - No user",
+        });
+    }
+    const { role } = req.body;
+    if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+            message: "Invalid role",
+        });
+    }
+    const user = await User.findByIdAndUpdate(req.user._id, { role }, { new: true });
+    if (!user) {
+        return res.status(404).json({
+            message: "User not found",
+        });
+    }
+    const token = jwt.sign({ user }, process.env.JWT_SECRET_KEY, { expiresIn: '15d' });
+    res.status(200).json({
+        token,
+        user,
+    });
+});
+export const myProfile = TryCatch(async (req, res, next) => {
+    const user = req.user;
+    res.json({ user });
+});
