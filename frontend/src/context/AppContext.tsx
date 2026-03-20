@@ -6,7 +6,7 @@ const AppContext=createContext<AppContextType|undefined>(undefined);
 
 interface AppContextProviderProps{
     children:ReactNode;
-}
+} 
 
 export const AppProvider=({children}:AppContextProviderProps)=>{
     const [user,setUser]=useState<User|null>(null);
