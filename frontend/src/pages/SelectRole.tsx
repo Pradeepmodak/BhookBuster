@@ -15,13 +15,13 @@ const selectRole = () => {
 
     const addRole=async()=>{
         try {
-            const data=await axios.post(`${authService}/api/auth/add/role`,{role},{
+            const {data}=await axios.post(`${authService}/api/auth/add/role`,{role},{
                 headers:{
                     Authorization:`Bearer ${localStorage.getItem("token")}`
                 }
             });
-            localStorage.setItem("token",data.data.token);
-            setUser(data.data.user);
+            localStorage.setItem("token",data.token);
+            setUser(data.user);
             navigate("/",{replace:true});
         } catch (error) {
             console.log(error);
@@ -31,7 +31,7 @@ const selectRole = () => {
   return (
     <div className='flex min-h-screen items-center 
     justify-center bg-white px-4'>
-
+        
     </div>
   )
 }
