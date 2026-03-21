@@ -1,7 +1,8 @@
 import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
+
 import axios from 'axios';
 import { authService } from '../main';
-import type { AppContextType, User} from '../types';
+import type { AppContextType, User, LocationData} from '../types';
 const AppContext=createContext<AppContextType|undefined>(undefined);
 
 interface AppContextProviderProps{
@@ -10,9 +11,9 @@ interface AppContextProviderProps{
 
 export const AppProvider=({children}:AppContextProviderProps)=>{
     const [user,setUser]=useState<User|null>(null);
-    const [isAuth,setIsAuth]=useState(false);
+    const [isAuth,setIsAuth]=useState<boolean>(false);
     const [loading,setLoading]=useState(true);
-    const [location,setLocation]=useState(null);
+    const [location,setLocation]=useState<{LocationData} | null>(null);
     const [loadingLocation,setLoadingLocation]=useState(false);
     const [city,setCity]=useState("Fetching location...");
 
@@ -24,7 +25,7 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
                 Authorization: `Bearer ${token}`
             }
         });
-        setUser(data.user);
+        setUser(data);
         setIsAuth(true);
     } catch (error) {
         console.log(error);
@@ -36,13 +37,47 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
         fetchUser();
     },[]);
 
+    useEffect(()=>{
+      if(!navigator.geolocation){
+        return alert("Please allow location access to use the app");
+        setLoadingLocation(true);
+      }  
+      navigator.geolocation.getCurrentPosition(async(position)=>{
+        const {latitude,longitude}=position.coords;
+        try {
+            const res=await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+            );
+            const data=await res.json();
+            setLocation({
+                latitude,
+                longitude,
+                formattedAddress:data.display_name || "current Location"
+            });
+            setCity(data.address.city || data.address.town || data.address.village || "Your Location");
+            setLoadingLocation(false);
+        } catch (error) {
+            setLocation({
+                latitude,
+                longitude,
+                formattedAddress:"current Location"
+            });
+            setCity("Failed to Load Location");
+        }
+      })
+    });
+
     return <AppContext.Provider value={{
         isAuth,
         setIsAuth,
         user,
         setUser,
         loading,
-        setLoading
+        setLoading,
+        user,
+        location,
+        loadingLocation,
+        city:string
     }}>{children}</AppContext.Provider>
 };
 
