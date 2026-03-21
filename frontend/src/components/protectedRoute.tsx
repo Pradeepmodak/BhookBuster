@@ -10,7 +10,7 @@ if(loading){
 if(!isAuth){
     return <Navigate to={"/login"} replace/>;
 }
-if(!user?.role && location.pathname!=="/select-role"){
+if(!(user?.role) && location.pathname!=="/select-role"){
     return <Navigate to={"/select-role"} replace/>;
 }
 if(user?.role && location.pathname ==="/select-role"){

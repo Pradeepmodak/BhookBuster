@@ -5,15 +5,17 @@ import { Toaster } from "react-hot-toast";
 import PublicRoute from "./components/publicRoute";
 import ProtectedRoute from "./components/protectedRoute";
 import SelectRole from "./pages/selectRole";
+import Navbar from "./components/navbar";
 const App = () => {
   return (
  <>
  <BrowserRouter>
+ <Navbar/>
  <Routes>
   <Route element={<PublicRoute/>}>
   <Route path="/login" element={<Login/>}/>
   </Route>
-    <Route element={<ProtectedRoute/>}>
+    <Route element={<PublicRoute/>}>
   <Route path="/" element={<Home/>}/>
   <Route path="/select-role" element={<SelectRole/>}/>
   </Route>
