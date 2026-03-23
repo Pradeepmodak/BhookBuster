@@ -8,6 +8,7 @@ export interface IUser {
     email:string;
     image:string;
     role:string;
+    restaurantId:string;
 }
 // add user property to Request interface
 export interface AuthenticatedRequest extends Request{
@@ -78,3 +79,18 @@ export const myProfile=TryCatch(async(req:AuthenticatedRequest,res:Response,next
    const user=req.user;
    res.json({user});
 });
+
+export const isSeller=async(
+    req:AuthenticatedRequest,
+    res:Response,
+    next:NextFunction
+):Promise<void>=>{
+  const user=req.user;
+  if(user?.role!=="seller"){
+    res.status(403).json({
+        message:"Forbidden - Not a seller",
+    });
+    return;
+  }
+  next();
+}
