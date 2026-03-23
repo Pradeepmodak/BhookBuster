@@ -21,7 +21,7 @@ cloudinary.v2.config({
   api_secret:CLOUD_API_SECRET
 });
 
-app.use('/cloudinary', cloudinaryRoutes);
+app.use('/api', cloudinaryRoutes);
 app.listen(PORT, () => {
   console.log(`Utils service is running on port ${PORT}`);
 });
