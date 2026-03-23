@@ -2,7 +2,7 @@ import {createContext, useContext, useEffect, useState, type ReactNode} from 're
 
 import axios from 'axios';
 import { authService } from '../main';
-import type { AppContextType, User, LocationData} from '../types';
+import type { AppContextType, User, LocationData, } from '../types';
 const AppContext=createContext<AppContextType|undefined>(undefined);
 
 interface AppContextProviderProps{
@@ -13,9 +13,9 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
     const [user,setUser]=useState<User|null>(null);
     const [isAuth,setIsAuth]=useState<boolean>(false);
     const [loading,setLoading]=useState(true);
-    const [location,setLocation]=useState<{LocationData} | null>(null);
+    const [location,setLocation]=useState<LocationData | null>(null);
     const [loadingLocation,setLoadingLocation]=useState(false);
-    const [city,setCity]=useState("Fetching location...");
+    const [city,setCity]=useState<string>("Fetching location...");
 
     async function fetchUser(){
     try {
@@ -38,17 +38,18 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
     },[]);
 
     useEffect(()=>{
-      if(!navigator.geolocation){
-        return alert("Please allow location access to use the app");
-        setLoadingLocation(true);
-      }  
+if(!navigator.geolocation){
+  alert("Please allow location access to use the app");
+  return;
+}
+setLoadingLocation(true); 
       navigator.geolocation.getCurrentPosition(async(position)=>{
         const {latitude,longitude}=position.coords;
         try {
-            const res=await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
-            );
-            const data=await res.json();
+const res = await fetch(
+  `https://us1.locationiq.com/v1/reverse?key=pk.80c138d580502bcf900f951710ca327b&lat=${latitude}&lon=${longitude}&format=json&`
+);
+const data = await res.json();
             setLocation({
                 latitude,
                 longitude,
@@ -65,7 +66,7 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
             setCity("Failed to Load Location");
         }
       })
-    });
+    },[]);
 
     return <AppContext.Provider value={{
         isAuth,
@@ -74,10 +75,9 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
         setUser,
         loading,
         setLoading,
-        user,
         location,
         loadingLocation,
-        city:string
+        city
     }}>{children}</AppContext.Provider>
 };
 
