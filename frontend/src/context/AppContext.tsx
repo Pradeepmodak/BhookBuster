@@ -64,6 +64,7 @@ const data = await res.json();
                 formattedAddress:"current Location"
             });
             setCity("Failed to Load Location");
+            setLoadingLocation(false);
         }
       })
     },[]);

@@ -60,6 +60,7 @@ const restaurant=await Restaurant.create({
         coordinates:[Number(longitude),Number(latitude)],
         formattedAddress,
     },
+    isVerified:false,
 });
 return res.status(201).json({
     message:"Restaurant created successfully",
