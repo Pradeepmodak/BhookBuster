@@ -9,6 +9,7 @@ import Navbar from "./components/navbar";
 import Account from "./pages/Account";
 import { useAppData } from "./context/AppContext";
 import Restaurant from "./pages/Restaurant";
+import AddRestaurant from "./components/AddRestaurant";
 const App = () => {
 const {user}=useAppData();
 if(user&&user.role=="seller"){
@@ -22,10 +23,12 @@ if(user&&user.role=="seller"){
   <Route element={<PublicRoute/>}>
   <Route path="/login" element={<Login/>}/>
   </Route>
-    <Route element={<PublicRoute/>}>
+    <Route element={<PublicRoute/>}>  /* temporary */
   <Route path="/" element={<Home/>}/>
   <Route path="/select-role" element={<SelectRole/>}/>
   <Route path="/account" element={<Account/>}/>
+  <Route path="/restaurant" element={<Restaurant/>}/> /* temporary */
+  <Route path="/add-restaurant" element={<AddRestaurant/>}/>  /* temporary */
   </Route>
  </Routes>
   <Toaster/>
