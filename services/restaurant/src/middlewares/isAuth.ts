@@ -1,7 +1,6 @@
 import { Request,Response,NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import TryCatch from "./trycatch.js";
-
 export interface IUser {
     _id:string;
     name:string;
