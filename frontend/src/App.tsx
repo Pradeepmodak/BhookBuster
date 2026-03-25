@@ -1,7 +1,6 @@
 import { BrowserRouter,Routes,Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import { Toaster } from "react-hot-toast";
 import PublicRoute from "./components/publicRoute";
 import ProtectedRoute from "./components/protectedRoute";
 import SelectRole from "./pages/SelectRole";
@@ -31,7 +30,6 @@ if(user&&user.role=="seller"){
   <Route path="/add-restaurant" element={<AddRestaurant/>}/>  /* temporary */
   </Route>
  </Routes>
-  <Toaster/>
  </BrowserRouter>
  </>
   )

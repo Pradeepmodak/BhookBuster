@@ -3,6 +3,7 @@ import {createContext, useContext, useEffect, useState, type ReactNode} from 're
 import axios from 'axios';
 import { authService } from '../main';
 import type { AppContextType, User, LocationData, } from '../types';
+import { Toaster } from 'react-hot-toast';
 const AppContext=createContext<AppContextType|undefined>(undefined);
 
 interface AppContextProviderProps{
@@ -79,7 +80,9 @@ const data = await res.json();
         location,
         loadingLocation,
         city
-    }}>{children}</AppContext.Provider>
+    }}>{children}
+     <Toaster/>
+    </AppContext.Provider>
 };
 
 export const useAppData=():AppContextType=>{
