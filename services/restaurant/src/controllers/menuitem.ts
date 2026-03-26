@@ -53,6 +53,7 @@ const item = await MenuItems.create({
     price,
     restaurantId: restaurant._id,
     image: uploadResult.url,
+    isAvailable:true
 
 })
 res.status(201).json({
