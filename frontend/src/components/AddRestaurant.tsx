@@ -55,11 +55,7 @@ const AddRestaurant = ({ fetchMyRestaurant }: AddRestaurantProps) => {
     <input type="number" placeholder='Contact number' value={phone} onChange={(e) => setPhone(e.target.value)} className='w-full rounded-lg border px-4 py-2 text-sm outline-none ' />
     <textarea placeholder='Restaurant Description' value={description} onChange={(e) => setDescription(e.target.value)} className='w-full rounded-lg border px-4 py-2 text-sm outline-none ' />
     <input type="file" accept='image/*' onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)} className='w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-blue-700 ' />
-    <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm text-gray-600 hover:bg-gray-50">
-    <BiUpload className="h-5 w-5 text-red-500" />
-    {image ? image.name : "Upload restaurant image"}
-    <input type="file" accept='image/*' onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)} className="hidden" />
-</label>
+
    <div className='flex items-start gap-3 rounded-lg border p-4'>
     <BiMapPin className='mt-0.5 h-5 w-5 text-red-500' />
     <div className='text-sm '>

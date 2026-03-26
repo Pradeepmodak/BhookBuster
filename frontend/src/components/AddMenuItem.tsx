@@ -2,6 +2,7 @@ import { useState } from "react";
 import { restaurantService } from "../main";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { BiUpload } from "react-icons/bi";
 
 const AddMenuItem = ({onItemAdded}:{onItemAdded:()=>void}) => {
     const [name, setName] = useState("");
@@ -47,7 +48,43 @@ const handleSubmit = async () => {
         setLoading(false);
     }
 };
-return <div>AddMenuItem</div>;
+    return (
+  <div className="max-w-md space-y-4 m-auto">
+    <h2 className="text-lg font-semibold">Add Menu Item</h2>
+    <input
+      type="text"
+      placeholder="Item name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+    />
+        <textarea
+      placeholder="Item description"
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+    />
+        <input
+      type="number"
+      placeholder="price ₹"
+      value={price}
+      onChange={(e) => setPrice(e.target.value)}
+      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+    />
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm text-gray-600 hover:bg-gray-50">
+        <BiUpload className="h-5 w-5 text-red-500" />
+        {image ? image.name : "Upload restaurant image"}
+        <input type="file" accept='image/*' onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)} className="hidden" />
+    </label>
+    <button
+  disabled={loading}
+  onClick={handleSubmit}
+  className="w-full rounded-lg bg-text-white text-sm py-3 font-semibold transition bg-red-500 cursor-pointer"
+>
+  {loading ? "Adding..." : "Add Item"}
+</button>
+  </div>
+);
 };
 
 export default AddMenuItem;
