@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { IMenuItem } from "../types";
-import { BsCart, BsEye } from "react-icons/bs";
+import { BsCartPlus, BsEye } from "react-icons/bs";
 import { FiEyeOff } from "react-icons/fi";
 import { BiTrash } from "react-icons/bi";
 import { VscLoading } from "react-icons/vsc";
@@ -125,7 +125,7 @@ const toggleAvailability = async (itemId: string) => {
         : "text-red-500 hover:bg-red-50"
     }`}
   >
-    {isLoading ? <VscLoading size={18} className="animate-spin" /> : <BsCart size={18} />}
+    {isLoading ? <VscLoading size={18} className="animate-spin" /> : <BsCartPlus size={18} />}
   </button>
 )}
 </div>

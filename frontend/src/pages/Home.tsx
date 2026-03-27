@@ -15,6 +15,8 @@ const Home = () => {
   const [restaurants, setRestaurants] = useState<IRestaurant[]>([])
   const [loading, setLoading] = useState(true);
 
+
+   // Haversine Formula to calculate distance
   const getDistanceKm = ({
   lat1,
   lon1,
