@@ -79,76 +79,80 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
         />
       )}
       <div className="p-5 space-y-4">
-        {isSeller && (
-          <div className="flex items-center justify-between">
-            <div>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="text-lg font-semibold border-b"
-                />
-              ) : (
-                <h2 className="text-xl font-semibold">{restaurant.name}</h2>
-              )}
-              <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                <BiMapPin className="h-4 w-4 text-red-500" />
-                {restaurant.autoLocation.formattedAddress ||
-                  "Location unavailable"}
-              </div>
+        <div className="flex items-center justify-between">
+          <div>
+            {editMode ? (
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="text-lg font-semibold border-b"
+              />
+            ) : (
+              <h2 className="text-xl font-semibold">{restaurant.name}</h2>
+            )}
+            <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+              <BiMapPin className="h-4 w-4 text-red-500" />
+              {restaurant.autoLocation.formattedAddress ||
+                "Location unavailable"}
             </div>
+          </div>
+
+          {isSeller && (
             <button
               onClick={() => setEditMode(!editMode)}
               className="text-gray-500 hover:text-black"
             >
               <BiEdit size={18} />
             </button>
-          </div>
+          )}
+        </div>
+
+        {editMode ? (
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full rounded border px-3 py-2 text-sm"
+          />
+        ) : (
+          <p className="text-sm text-gray-600">
+            {restaurant.description || "No description added"}
+          </p>
         )}
-        {
-          editMode? (
-            <textarea value={description} 
-            onChange={(e)=>setDescription(e.target.value)}
-            className="w-full rounded border px-3 py-2 text-sm"/>
-          ):(
-        <p className="text-sm text-gray-600">
-          {
-            restaurant.description || "No description added"
-          }
-        </p>
-          )
-        }
-        <div className="felx items-center justify-betweenp-3
-        b-top ">
-          <span className={`text-sm font-medium ${
-            isOpen?"text-green-600":"text-red-500"
-          }`}>
-            {isOpen?"OPEN":"CLOSED"}
+        <div
+          className="felx items-center justify-betweenp-3
+        b-top "
+        >
+          <span
+            className={`text-sm font-medium ${
+              isOpen ? "text-green-600" : "text-red-500"
+            }`}
+          >
+            {isOpen ? "OPEN" : "CLOSED"}
           </span>
           <div className="flex gap-3">
-{editMode && (
-    <button
-        onClick={saveChanges}
-        disabled={loading}
-        className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-    >
-        <BiSave size={16} />
-        Save
-    </button>
-)}
-{isSeller && (
-    <button
-        onClick={toggleOpenStatus}
-        className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white ${
-            isOpen
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-green-600 hover:bg-green-700"
-        }`}
-    >
-        {isOpen ? "Close Restaurant" : "Open Restaurant"}
-    </button>
-)}
+            {editMode && (
+              <button
+                onClick={saveChanges}
+                disabled={loading}
+                className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+              >
+                <BiSave size={16} />
+                Save
+              </button>
+            )}
+            {isSeller && (
+              <button
+                onClick={toggleOpenStatus}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white ${
+                  isOpen
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                {isOpen ? "Close Restaurant" : "Open Restaurant"}
+              </button>
+            )}
           </div>
         </div>
 

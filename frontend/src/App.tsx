@@ -9,6 +9,7 @@ import Account from "./pages/Account";
 import { useAppData } from "./context/AppContext";
 import Restaurant from "./pages/Restaurant";
 import AddRestaurant from "./components/AddRestaurant";
+import RestaurantPage from "./pages/RestaurantPage";
 const App = () => {
 const {user}=useAppData();
 if(user&&user.role=="seller"){
@@ -24,6 +25,7 @@ if(user&&user.role=="seller"){
   </Route>
     <Route element={<PublicRoute/>}>  /* temporary */
   <Route path="/" element={<Home/>}/>
+  <Route path="/restaurant/:id" element={<RestaurantPage/>}/>
   <Route path="/select-role" element={<SelectRole/>}/>
   <Route path="/account" element={<Account/>}/>
   <Route path="/restaurant" element={<Restaurant/>}/> /* temporary */
