@@ -11,6 +11,8 @@ import Restaurant from "./pages/Restaurant";
 import AddRestaurant from "./components/AddRestaurant";
 import RestaurantPage from "./pages/RestaurantPage";
 import Cart from "./pages/Cart";
+import Address from "./pages/Address";
+import Checkout from "./pages/Checkout";
 const App = () => {
 const {user}=useAppData();
 if(user&&user.role=="seller"){
@@ -26,9 +28,11 @@ if(user&&user.role=="seller"){
   </Route>
     <Route element={<PublicRoute/>}>  /* temporary */
   <Route path="/" element={<Home/>}/>
+  <Route path="/address" element={<Address/>}/>
   <Route path="/restaurant/:id" element={<RestaurantPage/>}/>
   <Route path="/cart" element={<Cart/>}/>
   <Route path="/select-role" element={<SelectRole/>}/>
+  <Route path="/checkout" element={<Checkout/>}/>
   <Route path="/account" element={<Account/>}/>
   <Route path="/restaurant" element={<Restaurant/>}/> /* temporary */
   <Route path="/add-restaurant" element={<AddRestaurant/>}/>  /* temporary */
