@@ -30,7 +30,7 @@ export const isAuth = async (req, res, next) => {
     }
     catch (err) {
         res.status(500).json({
-            message: "Please Login - Jwt error",
+            message: err.message || "Internal Server Error",
         });
     }
 };
