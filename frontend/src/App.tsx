@@ -26,7 +26,7 @@ if(user&&user.role=="seller"){
   <Route element={<PublicRoute/>}>
   <Route path="/login" element={<Login/>}/>
   </Route>
-    <Route element={<PublicRoute/>}>  /* temporary */
+    <Route element={<ProtectedRoute/>}>  /* temporary */
   <Route path="/" element={<Home/>}/>
   <Route path="/address" element={<Address/>}/>
   <Route path="/restaurant/:id" element={<RestaurantPage/>}/>

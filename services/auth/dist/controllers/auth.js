@@ -28,34 +28,24 @@ export const loginUser = TryCatch(async (req, res) => {
 const allowedRoles = ["customer", "rider", "seller"];
 export const addUserRole = TryCatch(async (req, res) => {
     if (!req.user?._id) {
-        return res.status(401).json({
-            message: "Unauthorized - No user",
-        });
+        return res.status(401).json({ message: "Unauthorized - No user" });
     }
     const { role } = req.body;
     if (!allowedRoles.includes(role)) {
-        return res.status(400).json({
-            message: "Invalid role",
-        });
+        return res.status(400).json({ message: "Invalid role" });
     }
     const user = await User.findByIdAndUpdate(req.user._id, { role }, { new: true });
     if (!user) {
-        return res.status(404).json({
-            message: "User not found",
-        });
+        return res.status(404).json({ message: "User not found" });
     }
     const token = jwt.sign({ user }, process.env.JWT_SECRET_KEY, { expiresIn: '15d' });
-    res.status(200).json({
-        token,
-        user,
-    });
+    res.status(200).json({ token, user });
 });
 export const myProfile = TryCatch(async (req, res) => {
+    console.log("req.user:", req.user);
     const user = req.user;
     if (!user) {
-        return res.status(401).json({
-            message: "Unauthorized - No user",
-        });
+        return res.status(401).json({ message: "Unauthorized" });
     }
     res.status(200).json({ user });
 });
