@@ -14,7 +14,7 @@ interface Address {
 }
 
 const Checkout = () => {
-  const { cart, subtotal, quantity,fetchCart } = useAppData();
+  const { cart, subtotal, quantity } = useAppData();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setselectedAddressId] = useState<string | null>(
     null,
@@ -125,7 +125,7 @@ const Checkout = () => {
             });
 
             toast.success("Payment successfull 🎉");
-                        fetchCart();
+                        // fetchCart();
             // navigate to this page after payment
             navigate("/paymentsuccess/" + response.razorpay_payment_id);
           } catch (error) {
