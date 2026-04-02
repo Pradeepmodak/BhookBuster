@@ -6,6 +6,7 @@ import AddRestaurant from "../components/AddRestaurant";
 import RestaurantProfile from "../components/RestaurantProfile";
 import MenuItems from "../components/MenuItems";
 import AddMenuItem from "../components/AddMenuItem";
+import RestaurantOrders from "../components/RestaurantOrders";
 
 type SellerTab = "menu" | "add-item" | "sales";
 
@@ -80,7 +81,7 @@ useEffect(()=>{
         onUpdate={setRestaurant}
         isSeller={true}
       />
-
+  <RestaurantOrders restaurantId={restaurant._id} />
       <div className="rounded-xl bg-white shadow-sm">
         <div className="flex border-b">
           {[

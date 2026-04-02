@@ -1,3 +1,4 @@
+import { count } from "console";
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import TryCatch from "../middlewares/trycatch.js";
 import Address from "../models/Address.js";
@@ -5,6 +6,7 @@ import Cart from "../models/Cart.js";
 import { IMenuItem } from "../models/MenuItems.js";
 import Order from "../models/Order.js";
 import Restaurant, { IRestaurant } from "../models/Restaurant.js";
+import axios from "axios";
 
 export const createOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
   const user = req.user;
@@ -187,3 +189,143 @@ export const fetchOrderForPayment = TryCatch(async (req, res) => {
   }) 
 
 });
+
+export const fetchRestaurantOrders = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+
+    const { restaurantId } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+    if (!restaurantId) {
+  return res.status(400).json({
+    message: "Restaurant id is required",
+  });
+}
+
+const  limit  = req.query.limit? Number(req.query.limit) : 0;
+
+const orders = await Order.find({
+  restaurantId,
+  paymentStatus: "paid",
+}).sort({ createdAt: -1 })
+.limit(limit);
+
+return res.json({
+    success:true,
+    count:orders.length,
+  orders,
+})
+  }
+);
+
+const ALLOWED_STATUSES = ["accepted", "preparing", "ready_for_rider"] as const;
+
+export const updateOrderStatus = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+    const order = await Order.findById(orderId);
+
+if (!order) {
+  return res.status(404).json({
+    message: "Order not found",
+  });
+}
+
+if (order.paymentStatus !== "paid") {
+    return res.status(404).json({
+    message: "Order not completed",
+  });
+  }
+const restaurant = await Restaurant.findById(order.restaurantId);
+
+if (!restaurant) {
+  return res.status(404).json({
+    message: "Restaurant not found",
+  });
+}
+// Only the restaurant owner can update the order.
+// rbac implementation can be added here in future to allow other users to update order status like riders can update status to delivered and users can cancel the order etc.
+if (restaurant.ownerId !== user._id.toString()) {
+  return res.status(401).json({
+    message: "You are not allowed to update this order",
+  });
+}
+
+order.status = status;
+
+await order.save();
+
+await axios.post(`${process.env.REALTIME_SERVICE}/api/v1/internal/emit`, {
+  event: "order:update",
+  // Only this user gets the update (not everyone)
+  room: `user:${order.userId}`,
+  payload: {
+    orderId: order._id,
+    status: order.status,
+  },
+}, {
+  headers: {
+    "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+  }
+});
+
+// NOW ASSIGNS RIDER AUTOMATICALLY WHEN ORDER IS READY FOR RIDER TO PICKUP
+res.json({
+  message: "Order status updated successfully",
+  order,
+})
+}
+);
+
+export const getMyOrders = TryCatch(async (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Unauthorized",
+    });
+  }
+
+  const orders = await Order.find({
+    userId: req.user._id.toString(),
+    paymentStatus: "paid",
+  }).sort({ createdAt: -1 });
+
+  res.json({ orders });
+});
+
+export const fetchSingleOrder = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+  return res.status(404).json({
+    message: "Order not found",
+  });
+}
+
+if (order.userId !== req.user._id.toString()) {
+  return res.status(401).json({
+    message: "You are not allowed to view this order",
+  });
+}
+res.json({ order });
+  }
+);
