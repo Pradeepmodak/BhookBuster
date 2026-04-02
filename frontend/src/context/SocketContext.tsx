@@ -36,5 +36,28 @@ const socket = io(realtimeService, {
 });
 
 socketRef.current = socket;
-  }, []);
+
+socket.on("connect", () => {
+  console.log("Socket Connected", socket.id);
+});
+
+socket.on("disconnect", () => {
+  console.log("Socket Disconnected");
+});
+socket.on("connect_error", (err) => {
+  console.log("Socket Error:", err.message);
+});
+
+return () => {
+  socket.disconnect();
+  socketRef.current = null;
 };
+  }, [isAuth]);
+
+  return (
+  <SocketContext.Provider value={{ socket: socketRef.current }}>
+    {children}
+  </SocketContext.Provider>
+);
+};
+export const useSocket = () => useContext(SocketContext);
