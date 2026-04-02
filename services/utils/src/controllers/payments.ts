@@ -50,3 +50,90 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
         message: "Payment verified successfully"
     })
 }
+
+// working with stripe
+import dotenv from "dotenv";
+dotenv.config();
+import Stripe from "stripe";
+// stripe instance banana hoga
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+export const payWithStripe = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.body;
+
+    const { data } = await axios.get(
+      `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
+      {
+        headers: {
+          "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+        },
+      }
+    );
+    const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["card"],
+  mode: "payment",
+
+  line_items: [
+    {
+      price_data: {
+        currency: "inr",
+        product_data: {
+          name: "BhookBuster Food Order",
+        },
+        unit_amount: data.amount * 100,
+      },
+      quantity: 1,
+    },
+  ],
+  metadata:{
+    orderId,
+  },
+success_url: `${process.env.FRONTEND_URL}/ordersuccess?session_id={CHECKOUT_SESSION_ID}`,
+cancel_url: `${process.env.FRONTEND_URL}/checkout`,
+});
+res.json({
+  url: session.url,
+});
+  } catch (error) {
+      res.status(500).json({
+    message: "stripe payment failed",
+  })
+    }
+};
+
+
+// check if the payment session id is valid or not and payment is successful or not
+export const verifyStripe = async (req: Request, res: Response) => {
+  const { sessionId } = req.body;
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (!session) {
+      return res.status(400).json({
+        message: "Payment verification failed",
+      });
+    }
+
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
+        return res.status(400).json({
+            message:"OrderId not found int the stripe session "
+        })
+    }
+    await publishPaymentSuccess({
+  orderId,
+  paymentId: sessionId,
+  provider: "stripe",
+});
+
+res.json({
+  message: "payment successful",
+});
+}catch (error) {
+    res.status(500).json({
+      message: "Stripe payment failed",
+    });
+  }
+}
