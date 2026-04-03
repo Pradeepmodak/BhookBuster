@@ -15,6 +15,7 @@ import Address from "./pages/Address";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentsSuccess";
 import OrderSuccess from "./pages/OrderSuccess";
+import Orders from "./pages/Orders";
 const App = () => {
 const {user}=useAppData();
 if(user&&user.role=="seller"){
@@ -32,6 +33,7 @@ if(user&&user.role=="seller"){
   <Route path="/" element={<Home/>}/>
   <Route path="/paymentsuccess/:paymentId" element={<PaymentSuccess/>}/>
   <Route path="/ordersuccess" element={<OrderSuccess/>}/>
+  <Route path="/orders" element={<Orders/>}/>
   <Route path="/address" element={<Address/>}/>
   <Route path="/restaurant/:id" element={<RestaurantPage/>}/>
   <Route path="/cart" element={<Cart/>}/>
