@@ -90,6 +90,19 @@ useEffect(() => {
   };
 }, [socket, audioUnlocked]);
 
+useEffect(() => {
+  if (!socket) return;
+
+  const onUpdateOrder = () => {
+    fetchOrders()
+  }
+
+  socket.on("order:rider_assigned", onUpdateOrder);
+  return ()=>{
+    socket.off("order:rider_assigned",onUpdateOrder);
+  }
+},[socket])
+
 // “Show orders that need attention right now”
 const activeOrders = orders.filter((o) =>
   ACTIVE_STATUSES.includes(o.status)
