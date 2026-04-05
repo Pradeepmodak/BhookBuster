@@ -167,7 +167,7 @@ if (!order) {
     order.deliveryAddress.latitude!,
     order.deliveryAddress.longitude!,
   ]}
-/>>
+/>
   ) : (
     <p>Waiting for rider location</p>
   )
