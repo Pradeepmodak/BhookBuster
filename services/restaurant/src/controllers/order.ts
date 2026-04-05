@@ -451,7 +451,7 @@ export const updateOrderStatusRider = TryCatch(async (req, res) => {
     });
   }
 
-  const orderId = req.body;
+  const orderId = req.params;
 
   const order = await Order.findById(orderId);
 

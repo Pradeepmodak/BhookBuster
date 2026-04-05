@@ -15,5 +15,5 @@ router.put("/assign/rider", assignRiderToOrder);
 // View current order
 router.get("/current/rider", getCurrentOrdersForRider);
 // Update delivery status
-router.put("/update/status/rider", updateOrderStatusRider);
+router.put("/update/status/rider/:orderId", updateOrderStatusRider);
 export default router;
