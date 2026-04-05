@@ -269,7 +269,7 @@ if(!profile){
     Please be within a 500 m radius of any restaurant (which we call a hotspot) before going online as a rider to receive orders.
   </p>
 </div>
-{profile.isVerified && (
+{profile.isVerified && !currentOrder &&  (
   <button
     onClick={toggleAvailability}
     disabled={toggling}
