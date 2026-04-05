@@ -5,6 +5,7 @@ import type { IOrder } from "../types";
 import { restaurantService } from "../main";
 import axios from "axios";
 import Orders from "./Orders";
+import UserOrderMap from "../components/UserOrderMap";
 
 const OrderPage = () => {
   const { id } = useParams();
@@ -47,6 +48,40 @@ useEffect(() => {
         socket.off("order:rider_assigned",onOrderUpdate);
     };
 }, [socket]);
+
+//  This hook subscribes the client to a user-specific
+//  socket room so it can receive real-time updates like rider location.
+//  It also ensures 
+// proper cleanup by leaving the room when the component unmounts.”
+useEffect(() => {
+  if (!socket || !id) return;
+
+  socket.emit("join", `user:${id}`);
+
+  return () => {
+    socket.emit("leave", `user:${id}`);
+  };
+}, [socket, id]);
+
+const [riderLocation,setRiderLocation]=useState<[number,number]|null>(null);
+
+
+// “This hook subscribes to a WebSocket event (rider:location) 
+// and updates the rider’s location in state whenever new 
+// coordinates are received, enabling real-time UI updates.”
+useEffect(() => {
+  if (!socket) return;
+
+  const onRiderLocation = ({ latitude, longitude }: any) => {
+    console.log("Rider Location:", latitude, longitude);
+    setRiderLocation([latitude, longitude]);
+  };
+  socket.on("rider:location",onRiderLocation);
+  return ()=>{
+    socket.off("rider:location",onRiderLocation);
+  }
+},[socket]);
+
 if (loading) {
   return <p className="text-center text-gray-500">Loading order...</p>;
 }
@@ -124,7 +159,19 @@ if (!order) {
 </p>
   </div>
 </div>
-
+{(order.status === "rider_assigned" || order.status === "picked_up") && (
+  riderLocation ? (
+    <UserOrderMap
+  riderLocation={riderLocation}
+  deliveryLocation={[
+    order.deliveryAddress.latitude!,
+    order.deliveryAddress.longitude!,
+  ]}
+/>>
+  ) : (
+    <p>Waiting for rider location</p>
+  )
+)}
   </div>;
 };
 

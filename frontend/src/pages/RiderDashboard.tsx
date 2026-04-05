@@ -10,6 +10,7 @@ import type { IOrder } from "../types";
 import { data } from "react-router-dom";
 import RiderOrderRequest from "../components/RiderOrderRequest";
 import RiderCurrentOrder from "../components/RiderCurrentOrder";
+import RiderOrderMap from "../components/RiderOrderMap";
 
 interface IRider {
   _id: string;
@@ -336,6 +337,7 @@ if(!profile){
       order={currentOrder}
       onStatusUpdate={fetchCurrentOrder}
     />
+    <RiderOrderMap order={currentOrder}/>
   </div>
 )}
 </div>
