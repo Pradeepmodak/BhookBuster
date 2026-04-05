@@ -9,6 +9,7 @@ import audio from "../assets/order_received.mp3"
 import type { IOrder } from "../types";
 import { data } from "react-router-dom";
 import RiderOrderRequest from "../components/RiderOrderRequest";
+import RiderCurrentOrder from "../components/RiderCurrentOrder";
 
 interface IRider {
   _id: string;
@@ -95,6 +96,7 @@ useEffect(() => {
 }, [user]);
 
 
+// latest order status appears in the ui
 const fetchCurrentOrder = async () => {
   try {
     const { data } = await axios.get(
@@ -326,6 +328,14 @@ if(!profile){
     }}
   />
 ))}
+  </div>
+)}
+{currentOrder && (
+  <div className="mx-auto max-w-md px-4 space-y-4">
+    <RiderCurrentOrder
+      order={currentOrder}
+      onStatusUpdate={fetchCurrentOrder}
+    />
   </div>
 )}
 </div>

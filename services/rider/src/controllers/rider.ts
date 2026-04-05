@@ -272,7 +272,8 @@ export const updateOrderStatus = TryCatch(
 
 try {
   const { data } = await axios.put(
-    `${process.env.RESTAURANT_SERVICE}/api/order/update/rider/${orderId}`,
+    `${process.env.RESTAURANT_SERVICE}/api/order/update/status/rider/${orderId}`,
+    {},
     {
       headers: {
         "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
