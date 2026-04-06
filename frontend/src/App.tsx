@@ -8,7 +8,6 @@ import Navbar from "./components/navbar";
 import Account from "./pages/Account";
 import { useAppData } from "./context/AppContext";
 import Restaurant from "./pages/Restaurant";
-import AddRestaurant from "./components/AddRestaurant";
 import RestaurantPage from "./pages/RestaurantPage";
 import Cart from "./pages/Cart";
 import Address from "./pages/Address";
@@ -58,7 +57,6 @@ if(user&&user.role=="admin"){
   <Route path="/checkout" element={<Checkout/>}/>
   <Route path="/account" element={<Account/>}/>
   <Route path="/restaurant" element={<Restaurant/>}/> /* temporary */
-  <Route path="/add-restaurant" element={<AddRestaurant />}/>  /* temporary */
   </Route>
  </Routes>
  </BrowserRouter>

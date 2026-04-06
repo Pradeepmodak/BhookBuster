@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import axios from "axios";
 import AdminRestaurantCard from "../components/AdminRestaurantCard";
 import AdminRiderCard from "../components/AdminRiderCard";
@@ -14,8 +14,8 @@ const Admin = () => {
       setLoading(true);
 
       const [res1, res2] = await Promise.all([
-        axios.get("/api/admin/restaurant/pending"),
-        axios.get("/api/admin/rider/pending"),
+        axios.get("/api/v1/admin/restaurant/pending"),
+        axios.get("/api/v1/admin/rider/pending"),
       ]);
 
       setRestaurant(res1.data.restaurants || []);

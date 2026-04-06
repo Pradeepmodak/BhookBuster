@@ -5,10 +5,31 @@ import { getPendingRestaurant, getPendingRiders, verifyRestaurant, verifyRider }
 
 const router = express.Router();
 
-router.get("/admin/restaurant/pending", isAuth, isAdmin, getPendingRestaurant);
-router.get("/admin/rider/pending", isAuth, isAdmin, getPendingRiders);
+import { RequestHandler } from "express";
 
-router.patch("/verify/rider/:id", isAuth, isAdmin, verifyRider);
-router.patch("/verify/restaurant/:id", isAuth, isAdmin, verifyRestaurant);
+router.get(
+	"/admin/restaurant/pending",
+	isAuth,
+	isAdmin,
+	getPendingRestaurant as RequestHandler
+);
+router.get(
+	"/admin/rider/pending",
+	isAuth,
+	isAdmin,
+	getPendingRiders as RequestHandler
+);
+router.patch(
+	"/verify/rider/:id",
+	isAuth,
+	isAdmin,
+	verifyRider as RequestHandler
+);
+router.patch(
+	"/verify/restaurant/:id",
+	isAuth,
+	isAdmin,
+	verifyRestaurant as RequestHandler
+);
 
 export default router;
