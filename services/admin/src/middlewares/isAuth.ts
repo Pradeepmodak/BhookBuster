@@ -12,14 +12,12 @@ export interface IUser {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user: IUser | null ;
+  user?: IUser;
 }
 
-export const isAuth = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+import { RequestHandler } from "express";
+
+export const isAuth: RequestHandler = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -47,9 +45,8 @@ export const isAuth = async (
       res.status(401).json({ message: "Unauthorized - Invalid token" });
       return;
     }
-
     // ✅ Attach user to request
-    req.user = decoded.user;
+    (req as any).user = decoded.user;
 
     next();
   } catch (err: any) {
@@ -59,20 +56,15 @@ export const isAuth = async (
   }
 };
 
-
-export const isAdmin = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const isAdmin: RequestHandler = async (req, res, next) => {
   try {
-    if (!req.user) {
+    if (!(req as any).user) {
       res.status(401).json({
         message: "Please Login",
       });
-      return ;
+      return;
     }
-    if(req.user.role!=="admin"){
+    if((req as any).user.role!=="admin"){
         res.status(403).json({
             message:"Access denied",
         })
