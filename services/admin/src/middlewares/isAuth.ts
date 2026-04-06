@@ -1,9 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { IUser } from "../model/User.js";
+
+
+export interface IUser {
+    _id:string;
+    name:string;
+    email:string;
+    image:string;
+    role:string;
+    restaurantId:string;
+}
 
 export interface AuthenticatedRequest extends Request {
-  user?: IUser ;
+  user: IUser | null ;
 }
 
 export const isAuth = async (
@@ -47,5 +56,32 @@ export const isAuth = async (
     res.status(401).json({
       message: err.message || "Unauthorized - Token error",
     });
+  }
+};
+
+
+export const isAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Please Login",
+      });
+      return ;
+    }
+    if(req.user.role!=="admin"){
+        res.status(403).json({
+            message:"Access denied",
+        })
+        return ;
+    }
+    next();
+  } catch (error) {
+      res.status(401).json({
+        message: "Please Login",
+      });
   }
 };
