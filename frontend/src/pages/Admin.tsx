@@ -2,6 +2,7 @@ import  { useEffect, useState } from "react";
 import axios from "axios";
 import AdminRestaurantCard from "../components/AdminRestaurantCard";
 import AdminRiderCard from "../components/AdminRiderCard";
+import { adminService } from "../main";
 
 const Admin = () => {
   const [restaurant, setRestaurant] = useState<any[]>([]);

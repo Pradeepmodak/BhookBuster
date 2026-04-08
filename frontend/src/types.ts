@@ -28,6 +28,8 @@ export interface AppContextType{
    fetchCart:()=>Promise<void>;
    subtotal:number;
    quantity:number;
+   fetchLocation:()=>Promise<void>;
+   fetchUser:()=>Promise<void>;
 }
 
 export interface IRestaurant {

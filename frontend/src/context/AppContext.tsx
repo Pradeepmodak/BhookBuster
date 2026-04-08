@@ -38,6 +38,60 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
     const [cart,setCart]=useState<ICart[]>([]);
     const [subtotal,setSubtotal]=useState(0);
     const [quantity,setQuantity]=useState(0);
+
+    const fetchLocation = async () => {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by this browser");
+        return;
+      }
+      
+      setLoadingLocation(true);
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(
+            `https://us1.locationiq.com/v1/reverse?key=pk.80c138d580502bcf900f951710ca327b&lat=${latitude}&lon=${longitude}&format=json&`
+          );
+          const data = await res.json();
+          const resolvedCity =
+            data?.address?.city ||
+            data?.address?.town ||
+            data?.address?.village ||
+            data?.address?.state ||
+            data?.address?.county ||
+            data?.address?.country ||
+            data?.display_name ||
+            "Current Location";
+
+          setLocation({
+            latitude,
+            longitude,
+            formattedAddress: data?.display_name || "Current Location"
+          });
+          setCity(resolvedCity);
+          setLoadingLocation(false);
+        } catch (error) {
+          setLocation({
+            latitude,
+            longitude,
+            formattedAddress: "Current Location"
+          });
+          setCity("Failed to Load Location");
+          setLoadingLocation(false);
+        }
+      }, (error) => {
+        console.log("Location error:", error);
+        setLoadingLocation(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setCity("Location permission denied");
+          alert("Location permission is required to find restaurants near you. Please allow location access and try again.");
+        } else {
+          setCity("Location unavailable");
+          alert("Unable to get your location. Please check your browser settings.");
+        }
+      });
+    };
+
 async function fetchCart() {
   if (!user || user.role !== "customer") return;
 
@@ -68,35 +122,7 @@ async function fetchCart() {
     },[user]);
 
     useEffect(()=>{
-if(!navigator.geolocation){
-  alert("Please allow location access to use the app");
-  return;
-}
-setLoadingLocation(true); 
-      navigator.geolocation.getCurrentPosition(async(position)=>{
-        const {latitude,longitude}=position.coords;
-        try {
-const res = await fetch(
-  `https://us1.locationiq.com/v1/reverse?key=pk.80c138d580502bcf900f951710ca327b&lat=${latitude}&lon=${longitude}&format=json&`
-);
-const data = await res.json();
-            setLocation({
-                latitude,
-                longitude,
-                formattedAddress:data.display_name || "current Location"
-            });
-            setCity(data.address.city || data.address.town || data.address.village || "Your Location");
-            setLoadingLocation(false);
-        } catch (error) {
-            setLocation({
-                latitude,
-                longitude,
-                formattedAddress:"current Location"
-            });
-            setCity("Failed to Load Location");
-            setLoadingLocation(false);
-        }
-      })
+      fetchLocation();
     },[]);
 
     return <AppContext.Provider value={{
@@ -113,6 +139,8 @@ const data = await res.json();
         fetchCart,
         quantity,
         subtotal,
+        fetchLocation,
+        fetchUser,
 
     }}>{children}
      <Toaster/>
