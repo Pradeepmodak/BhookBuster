@@ -30,11 +30,11 @@ const AddRestaurant = ({ fetchMyRestaurant }: AddRestaurantProps) => {
         formData.append("latitude",location.latitude.toString());
         formData.append("longitude",location.longitude.toString());
         formData.append("formattedAddress",location.formattedAddress);
-        formData.append("image",image);
+        formData.append("file",image);
 
         try {
             setSubmitting(true);
-            await axios.post(`${restaurantService}/api/restaurant`,formData,{
+            await axios.post(`${restaurantService}/api/restaurant/new`,formData,{
                 headers:{
                     Authorization: `Bearer ${localStorage.getItem("token")}`
                 }

@@ -205,7 +205,7 @@ export const acceptOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
       isAvailable: true,
     },
     { isAvailable: false },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   res.json({ message: "Order accepted" });
@@ -233,7 +233,7 @@ export const fetchMyCurrentOrder = TryCatch(async (req: AuthenticatedRequest, re
   }
 try {
   const { data } = await axios.get(
-    `${process.env.RESTAURANT_SERVICE}/api/current/rider?riderId=${rider._id}`,
+    `${process.env.RESTAURANT_SERVICE}/api/order/current/rider?riderId=${rider._id}`,
     {
       headers: {
         "x-internal-key": process.env.INTERNAL_SERVICE_KEY,

@@ -27,6 +27,10 @@ const schema = new Schema<IMenuItem>({
         type: String,
         trim: true,
     },
+        image:{
+        type:String,
+        required:true,
+    },
         price: {
         type: Number,
         required: true,

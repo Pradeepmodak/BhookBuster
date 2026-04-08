@@ -41,7 +41,7 @@ const cartItem = await Cart.findOneAndUpdate(
     $inc: { quantity: 1 },
     $setOnInsert: { userId, restaurantId, itemId },
   },
-  { upsert: true, new: true, setDefaultsOnInsert: true }
+  { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
 );
 
 return res.json({

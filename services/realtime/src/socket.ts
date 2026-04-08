@@ -21,9 +21,9 @@ export const initSocket = (server: http.Server) => {
     if (!token) {
       return next(new Error("Unauthorized"));
     }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY!) as any;
    
-    if(!decoded || !decoded.userId) {
+    if(!decoded || !decoded.user || !decoded.user._id) {
       return next(new Error("Unauthorized"));
     }
 

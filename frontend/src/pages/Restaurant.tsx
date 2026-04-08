@@ -102,11 +102,14 @@ useEffect(()=>{
 
 
 <div className="p-5">
-    {tab === "menu" && <p><MenuItems items={menuItems}
+    {tab === "menu" && <div><MenuItems items={menuItems}
     onItemDeleted={()=>fetchMenuItems(restaurant._id)}
     isSeller={true}
-    /></p>}
-    {tab === "add-item" && <p><AddMenuItem onItemAdded={()=>{}}/></p>}
+    /></div>}
+    {tab === "add-item" && <div><AddMenuItem onItemAdded={() => {
+      fetchMenuItems(restaurant._id);
+      setTab("menu");
+    }} /></div>}
     {tab === "sales" && <p>Sales Page</p>}
 </div>
 

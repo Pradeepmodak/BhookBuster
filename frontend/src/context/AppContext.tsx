@@ -26,8 +26,9 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
                 Authorization: `Bearer ${token}`
             }
         });
-        setUser(data);
-        setIsAuth(true);
+        const userData = data.user ?? data;
+        setUser(userData);
+        if (userData) setIsAuth(true);
     } catch (error) {
         console.log(error);
     }finally{

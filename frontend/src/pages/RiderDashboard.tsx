@@ -7,7 +7,6 @@ import toast from "react-hot-toast";
 import { BiUpload } from "react-icons/bi";
 import audio from "../assets/order_received.mp3"
 import type { IOrder } from "../types";
-import { data } from "react-router-dom";
 import RiderOrderRequest from "../components/RiderOrderRequest";
 import RiderCurrentOrder from "../components/RiderCurrentOrder";
 import RiderOrderMap from "../components/RiderOrderMap";
@@ -71,7 +70,12 @@ useEffect(() => {
   setIncomingOrders((prev) => prev.filter((id) => id !== orderId));
 }, 10000);
   };
-  
+
+  socket.on('order:available', onOrderAvailable);
+
+  return () => {
+    socket.off('order_available', onOrderAvailable);
+  };
 },[socket,audioUnlocked]);
 const fetchProfile = async () => {
   try {
