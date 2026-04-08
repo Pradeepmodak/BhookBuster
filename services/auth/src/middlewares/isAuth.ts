@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { IUser } from "../model/User.js";
+import User from "../model/User.js";
 
 export interface AuthenticatedRequest extends Request {
   user?: IUser ;
@@ -34,13 +35,19 @@ export const isAuth = async (
       process.env.JWT_SECRET_KEY as string
     ) as JwtPayload;
 
-    if (!decoded || !decoded.user) {
+    if (!decoded || !decoded.user || !decoded.user._id) {
       res.status(401).json({ message: "Unauthorized - Invalid token" });
       return;
     }
 
-    // ✅ Attach user to request
-    req.user = decoded.user;
+    const user = await User.findById(decoded.user._id);
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized - User not found" });
+      return;
+    }
+
+    // ✅ Attach fresh user from DB to request
+    req.user = user;
 
     next();
   } catch (err: any) {

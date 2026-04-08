@@ -1,11 +1,26 @@
 import toast from "react-hot-toast";
 import {useAppData} from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
-import { BiLogOut, BiMapPin, BiPackage } from "react-icons/bi";
+import { BiLogOut, BiMapPin, BiPackage, BiRefresh } from "react-icons/bi";
+import { useState } from "react";
 const Account = () => {
-const {user,setUser,setIsAuth}=useAppData();
+const {user,setUser,setIsAuth,fetchUser}=useAppData();
+const [refreshing, setRefreshing] = useState(false);
 const firstLetter=user?.name.charAt(0).toUpperCase();
 const navigate=useNavigate();
+
+const handleRefresh = async () => {
+  setRefreshing(true);
+  try {
+    await fetchUser();
+    toast.success("Profile synced with server");
+  } catch (error) {
+    toast.error("Failed to sync profile");
+  } finally {
+    setRefreshing(false);
+  }
+};
+
 const logoutHandler=()=>{
     localStorage.removeItem("token");
     setUser(null);
@@ -26,6 +41,16 @@ const logoutHandler=()=>{
         </div>
       </div>
    <div className="divide-y">
+  <div
+    className="flex cursor-pointer items-center gap-4 p-5 hover:bg-gray-50"
+    onClick={handleRefresh}
+    title="Sync profile with server to pick up any role changes"
+  >
+    <BiRefresh className={`h-5 w-5 text-red-500 ${refreshing ? 'animate-spin' : ''}`} />
+    <span className="font-medium">{refreshing ? 'Refreshing...' : 'Sync Profile'}</span>
+  </div>
+</div>
+<div className="divide-y">
   <div
     className="flex cursor-pointer items-center gap-4 p-5 hover:bg-gray-50"
     onClick={() => navigate("/orders")}

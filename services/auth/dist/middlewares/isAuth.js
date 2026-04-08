@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import User from "../model/User.js";
 export const isAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -15,12 +16,17 @@ export const isAuth = async (req, res, next) => {
         }
         // ✅ Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        if (!decoded || !decoded.user) {
+        if (!decoded || !decoded.user || !decoded.user._id) {
             res.status(401).json({ message: "Unauthorized - Invalid token" });
             return;
         }
-        // ✅ Attach user to request
-        req.user = decoded.user;
+        const user = await User.findById(decoded.user._id);
+        if (!user) {
+            res.status(401).json({ message: "Unauthorized - User not found" });
+            return;
+        }
+        // ✅ Attach fresh user from DB to request
+        req.user = user;
         next();
     }
     catch (err) {
