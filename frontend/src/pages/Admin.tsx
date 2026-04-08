@@ -14,8 +14,16 @@ const Admin = () => {
       setLoading(true);
 
       const [res1, res2] = await Promise.all([
-        axios.get("/api/v1/admin/restaurant/pending"),
-        axios.get("/api/v1/admin/rider/pending"),
+        axios.get(`${adminService}/v1/api/admin/restaurant/pending`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }),
+        axios.get(`${adminService}/v1/api/admin/rider/pending`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }),
       ]);
 
       setRestaurant(res1.data.restaurants || []);

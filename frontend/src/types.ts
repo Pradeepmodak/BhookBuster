@@ -75,7 +75,7 @@ export interface IOrder {
   restaurantId: string;
   restaurantName: string;
   riderId?: string | null;
-  riderPhone?: number | null;
+  riderPhone?: string | null;
   riderName?: string | null;
   distance?: number;
   riderAmount: number;

@@ -31,7 +31,7 @@ const order = await Order.findOneAndUpdate(
   }
 },
 // hey mongoose return the updated doc
-{new :true}
+{returnDocument:'after'}
 );
 // if order is already paid or invalid id then ack it and remove 
 // it from queue otherwise it will do infinite retry

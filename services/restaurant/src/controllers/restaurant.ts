@@ -52,7 +52,7 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
     const restaurant = await Restaurant.create({
         name,
         description,
-        phone,
+        phone: Number(phone),
         image: uploadResult.url,
         ownerId: user._id,
         autoLocation: {
@@ -107,12 +107,12 @@ export const updateStatusRestaurant = TryCatch(
                 message: "Status must be boolean"
             })
         }
-        const restaurant = Restaurant.findOneAndUpdate(
+        const restaurant = await Restaurant.findOneAndUpdate(
             {
                 ownerId: req.user._id,
             },
             { isOpen: status },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!restaurant) {
             return res.status(404).json({

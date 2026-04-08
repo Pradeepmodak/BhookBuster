@@ -1,4 +1,4 @@
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { IOrder } from "../types";
 import { useSocket } from "../context/SocketContext";
 import audio from "../assets/order_placed.mp3";
@@ -19,7 +19,7 @@ const RestaurantOrders = ({ restaurantId }: { restaurantId: string }) => {
   // stores all the orders for the restaurant
   const [orders, setOrders] = useState<IOrder[]>([]);
   // tracks api loading state
-const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 // tracks if audio is unlocked for playback
 const [audioUnlocked, setAudioUnlocked] = useState(false);
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { IOrder } from "../types";
 import { restaurantService } from "../main";
 import axios from "axios";
-import Orders from "./Orders";
 import UserOrderMap from "../components/UserOrderMap";
 
 const OrderPage = () => {
@@ -56,10 +55,7 @@ useEffect(() => {
 useEffect(() => {
   if (!socket || !id) return;
 
-  socket.emit("join", `user:${id}`);
-
   return () => {
-    socket.emit("leave", `user:${id}`);
   };
 }, [socket, id]);
 

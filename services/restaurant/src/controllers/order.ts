@@ -154,7 +154,7 @@ const order = await Order.create({
   expiresAt,
 });
 
-await Cart.deleteOne({user_id:user._id});
+await Cart.deleteOne({userId:user._id});
 
 res.json({
     message:"Order created Successfully",
@@ -233,6 +233,10 @@ export const updateOrderStatus = TryCatch(
     const { orderId } = req.params;
     const { status } = req.body;
 
+    if (!ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
     if (!user) {
       return res.status(401).json({
         message: "Unauthorized",
@@ -282,7 +286,7 @@ await axios.post(`${process.env.REALTIME_SERVICE}/api/v1/internal/emit`, {
   headers: {
     "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
   }
-});
+}).catch(() => {});
 
 // NOW ASSIGNS RIDER AUTOMATICALLY WHEN ORDER IS READY FOR RIDER TO PICKUP
 if (status === "ready_for_rider") {
@@ -380,7 +384,7 @@ export const assignRiderToOrder = TryCatch(async (req, res) => {
     riderPhone,
     status: "rider_assigned",
   },
-  { new:true }
+  { returnDocument:'after' }
 );
 await axios.post(
   `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
@@ -451,7 +455,7 @@ export const updateOrderStatusRider = TryCatch(async (req, res) => {
     });
   }
 
-  const orderId = req.params;
+  const { orderId } = req.params;
 
   const order = await Order.findById(orderId);
 
@@ -479,7 +483,7 @@ await axios.post(
       "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
     },
   }
-);
+).catch(() => {});
 
   await axios.post(
   `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
@@ -517,7 +521,7 @@ await axios.post(
       "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
     },
   }
-);
+).catch(() => {});
 
   await axios.post(
   `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
@@ -531,9 +535,8 @@ await axios.post(
       "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
     },
   }
-);
+).catch(() => {});
 return res.json({
   message:"Order Updated Successfully"
 })
 }
-});

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppData } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -26,12 +26,23 @@ const roleConfig = {
 
 const SelectRole = () => {
     const [role, setRole] = useState<Role>(null);
-    const { setUser } = useAppData();
+    const [isLoading, setIsLoading] = useState(false);
+    const [shouldNavigate, setShouldNavigate] = useState(false);
+    const { setUser, user } = useAppData();
     const navigate = useNavigate();
     const roles: Exclude<Role, null>[] = ["customer", "rider", "seller"];
 
+    // Navigate after user state is updated with role
+    useEffect(() => {
+        if (shouldNavigate && user?.role) {
+            navigate("/", { replace: true });
+            setShouldNavigate(false);
+        }
+    }, [user, shouldNavigate, navigate]);
+
     const addRole = async () => {
         try {
+            setIsLoading(true);
             const { data } = await axios.put(`${authService}/api/auth/add/role`, { role }, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -39,10 +50,11 @@ const SelectRole = () => {
             });
             localStorage.setItem("token", data.token);
             setUser(data.user);
-            navigate("/", { replace: true });
+            setShouldNavigate(true);
         } catch (error) {
             console.log(error);
             alert("Error adding role");
+            setIsLoading(false);
         }
     }
 
@@ -90,13 +102,13 @@ const SelectRole = () => {
 
                 {/* Continue Button */}
                 <button
-                    disabled={!role}
+                    disabled={!role || isLoading}
                     onClick={addRole}
                     className="w-full py-3 rounded-xl bg-[#E23774] text-white font-semibold text-sm
                         hover:bg-[#c41e5b] transition-colors
                         disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
-                    Continue as {role ? roleConfig[role].label : "..."}
+                    {isLoading ? "Processing..." : `Continue as ${role ? roleConfig[role].label : "..."}`}
                 </button>
 
                 <p className="text-center text-xs text-gray-400">

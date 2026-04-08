@@ -14,14 +14,13 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
   const [editMode, setEditMode] = useState(false);
   const [name, setName] = useState(restaurant.name);
   const [description, setDescription] = useState(restaurant.description || "");
-  const [phone, setPhone] = useState(restaurant.phone.toString());
   const [isOpen, setIsOpen] = useState(restaurant.isOpen);
   const [loading, setLoading] = useState(false);
 
   const toggleOpenStatus = async () => {
     try {
       const { data } = await axios.put(
-        `${restaurantService}/api/restaurant/${restaurant._id}/status`,
+        `${restaurantService}/api/restaurant/status`,
         { status: !isOpen },
         {
           headers: {

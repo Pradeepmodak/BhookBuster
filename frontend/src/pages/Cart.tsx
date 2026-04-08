@@ -10,7 +10,7 @@ import { BiMinus, BiPlus } from "react-icons/bi";
 import { TbTrash } from "react-icons/tb";
 
 const Cart = () => {
-  const { cart, subtotal, quantity, fetchCart } = useAppData();
+  const { cart, subtotal, fetchCart } = useAppData();
   const navigate = useNavigate();
 
   const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
@@ -25,7 +25,7 @@ const Cart = () => {
   }
 const restaurant = cart[0].restaurantId as IRestaurant;
 
-const deliveryFee = subtotal < 250 ? 39:0;
+const deliveryFee = subtotal < 250 ? 49:0;
 
 const platformFee=7;
 const grandTotal=subtotal + deliveryFee + platformFee;

@@ -12,7 +12,7 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
         {
             // to get only trusted users // api key approach
             headers: {
-                "x-internal-key": process.env.RESTAURANT_SERVICE
+                "x-internal-key": process.env.INTERNAL_SERVICE_KEY
             }
         }
     );

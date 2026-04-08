@@ -18,7 +18,7 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
 
     if (!restaurant) {
         return res.status(404).json({
-            message: "NO Restaurant found",
+            message: "No Restaurant found",
         });
     }
 
@@ -41,7 +41,7 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
             message: "Invalid image file",
         });
     }
-
+    console.log("Uploading file to utils service...");
     const { data: uploadResult } = await axios.post(`${process.env.UTILS_SERVICE}/api/upload`, {
         buffer: fileBuffer.content,
     }

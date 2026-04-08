@@ -8,7 +8,7 @@ let db: Db;
 export const connectDb = async (): Promise<Db> => {
   if (db) return db;
 
-  client = new MongoClient(process.env.MONGO_URI!);
+  client = new MongoClient(process.env.MONGODB_URI!);
   await client.connect();
   db=client.db(process.env.DB_NAME);
   console.log("Admin service connected to mongodb");
