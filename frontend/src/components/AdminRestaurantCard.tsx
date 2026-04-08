@@ -1,6 +1,7 @@
 import axios from "axios";
 import { adminService } from "../main";
 import { toast } from "react-hot-toast";
+import VerificationBadge from "./VerificationBadge";
 
 const AdminRestaurantCard = ({
   restaurant,
@@ -12,7 +13,7 @@ const AdminRestaurantCard = ({
   const verify = async () => {
     try {
       await axios.patch(
-        `${adminService}/api/v1/verify/restaurant/${restaurant._id}`,
+        `${adminService}/v1/api/verify/restaurant/${restaurant._id}`,
         {}, // empty body
         {
           headers: {
@@ -35,8 +36,10 @@ const AdminRestaurantCard = ({
       className="h-40 w-full object-cover rounded"
       alt=""
     />
-
-    <h3>{restaurant.name}</h3>
+    <div className="flex items-center gap-2 flex-wrap">
+      <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+      <VerificationBadge isVerified={restaurant.isVerified} size={16} />
+    </div>
 
     <p className="text-sm text-gray-500">
       {restaurant.phone}

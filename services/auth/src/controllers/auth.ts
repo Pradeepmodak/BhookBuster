@@ -50,10 +50,12 @@ export const addUserRole = TryCatch(async (req: Request, res: Response) => {
 });
 
 export const myProfile = TryCatch(async (req: Request, res: Response) => {
-    console.log("req.user:", req.user);
     const user = req.user;
     if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
     }
+    // Do NOT re-sign a token here. Other services (restaurant, rider) may embed
+    // extra fields (e.g. restaurantId) into the JWT. Re-signing from just req.user
+    // would strip those fields and cause infinite reload loops.
     res.status(200).json({ user });
 });

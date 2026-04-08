@@ -153,20 +153,6 @@ const checkout=()=>{
       <BiPlus size={16} />
     )}
   </button>
-
-  
-
-    <button
-    className="rounded-full border p-2 hover:bg-gray-100 disabled:opacity-50"
-    disabled={isLoading}
-    onClick={() => decreaseQty(item._id)}
-  >
-    {isLoading ? (
-      <VscLoading size={16} className="animate-spin" />
-    ) : (
-      <BiMinus size={16} />
-    )}
-  </button>
 </div>
 <p className="w-20 text-right font-medium">
    ₹{item.price * cartItem.quantity}

@@ -7,10 +7,12 @@ import RestaurantProfile from "../components/RestaurantProfile";
 import MenuItems from "../components/MenuItems";
 import AddMenuItem from "../components/AddMenuItem";
 import RestaurantOrders from "../components/RestaurantOrders";
+import { useAppData } from "../context/AppContext";
 
 type SellerTab = "menu" | "add-item" | "sales";
 
 const Restaurant = () => {
+  const { fetchUser } = useAppData();
   const [restaurant, setRestaurant] = useState<IRestaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<SellerTab>("menu");
@@ -27,7 +29,8 @@ const Restaurant = () => {
       setRestaurant(data.restaurant || null);
       if (data.token) {
         localStorage.setItem("token", data.token);
-        window.location.reload();
+        // Refresh user context instead of full page reload to avoid infinite loops
+        fetchUser();
       }
     } catch (error) {
       console.error("Error fetching restaurant:", error);
@@ -98,8 +101,6 @@ useEffect(()=>{
             </button>
           ))}
         </div>
-        Here's the text from the image:
-
 
 <div className="p-5">
     {tab === "menu" && <div><MenuItems items={menuItems}

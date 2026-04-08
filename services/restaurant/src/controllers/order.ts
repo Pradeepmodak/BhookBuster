@@ -1,4 +1,3 @@
-import { count } from "console";
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import TryCatch from "../middlewares/trycatch.js";
 import Address from "../models/Address.js";
@@ -154,7 +153,7 @@ const order = await Order.create({
   expiresAt,
 });
 
-await Cart.deleteOne({userId:user._id});
+await Cart.deleteMany({userId:user._id});
 
 res.json({
     message:"Order created Successfully",
@@ -540,3 +539,8 @@ return res.json({
   message:"Order Updated Successfully"
 })
 }
+
+return res.status(400).json({
+  message: "Cannot update order with current status",
+});
+});

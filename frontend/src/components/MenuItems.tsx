@@ -76,7 +76,7 @@ const addToCart = async (restaurantId: string, itemId: string) => {
     toast.success(data.message);
     fetchCart();
   } catch (error:any) {
-    toast.error(error.response.data.message);
+    toast.error(error?.response?.data?.message || "Failed to add item");
   }finally{
     setloadingItemId(null);
   }
@@ -145,7 +145,7 @@ const addToCart = async (restaurantId: string, itemId: string) => {
 {!isSeller && (
   <button
     disabled={!item.isAvailable || isLoading}
-    onClick={() => addToCart(item._id,item.restaurantId)}
+    onClick={() => addToCart(item.restaurantId, item._id)}
     className={`flex items-center justify-center rounded-lg p-2 ${
       !item.isAvailable || isLoading
         ? "cursor-not-allowed text-gray-400"

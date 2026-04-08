@@ -65,18 +65,26 @@ export const fetchMyCart = TryCatch(async (req: AuthenticatedRequest, res) => {
 
   let subtotal = 0;
   let cartLength = 0;
+  const validCartItems = [];
 
   for(const cartItem of cartItems){
     const item:any=cartItem.itemId;
-    subtotal+=item.price*cartItem.quantity;
-    cartLength+=cartItem.quantity;
+    if (item && item.price) {
+        subtotal+=item.price*cartItem.quantity;
+        cartLength+=cartItem.quantity;
+        validCartItems.push(cartItem);
+    } else {
+        // Auto-purge corrupted/orphaned cart entries
+        await Cart.findByIdAndDelete(cartItem._id);
+    }
   }
-return res.json({
-    success:true,
-    cartLength,
-    subtotal,
-    cart:cartItems,
-})
+
+  return res.json({
+      success:true,
+      cartLength,
+      subtotal,
+      cart:validCartItems,
+  })
 });
 
 export const incrementCartItem = TryCatch(
@@ -129,7 +137,7 @@ export const decrementCartItem = TryCatch(
     }
     if(cartItem.quantity===1){
         await Cart.deleteOne({userId,itemId});
-        res.json({
+        return res.json({
             message:"Item removed from cart",
         })
     }

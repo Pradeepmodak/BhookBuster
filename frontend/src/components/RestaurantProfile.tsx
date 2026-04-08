@@ -5,6 +5,7 @@ import { restaurantService } from "../main";
 import toast from "react-hot-toast";
 import { BiEdit, BiMapPin, BiSave } from "react-icons/bi";
 import { useAppData } from "../context/AppContext.tsx";
+import VerificationBadge from "./VerificationBadge";
 interface props {
   restaurant: IRestaurant;
   isSeller: boolean;
@@ -108,7 +109,12 @@ const logoutHandler = async () => {
                 className="text-lg font-semibold border-b"
               />
             ) : (
-              <h2 className="text-xl font-semibold">{restaurant.name}</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-semibold">{restaurant.name}</h2>
+                {isSeller && (
+                  <VerificationBadge isVerified={restaurant.isVerified} size={18} />
+                )}
+              </div>
             )}
             <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
               <BiMapPin className="h-4 w-4 text-red-500" />
