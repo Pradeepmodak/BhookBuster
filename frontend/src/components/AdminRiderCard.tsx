@@ -1,6 +1,7 @@
 import axios from "axios";
 import { adminService } from "../main";
 import { toast } from "react-hot-toast";
+import VerificationBadge from "./VerificationBadge";
 
 interface IRider {
   _id: string;
@@ -22,7 +23,7 @@ const AdminRiderCard = ({
   const verify = async () => {
     try {
       await axios.patch(
-        `${adminService}/api/v1/verify/rider/${rider._id}`,
+        `${adminService}/v1/api/verify/rider/${rider._id}`,
         {},
         {
           headers: {
@@ -45,8 +46,10 @@ const AdminRiderCard = ({
         className="h-40 w-full object-cover rounded"
         alt=""
       />
-
-      <h3>Rider ID: {rider._id}</h3>
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="font-semibold">Rider ID: {rider._id}</h3>
+        <VerificationBadge isVerified={rider.isVerified} size={14} />
+      </div>
 
       <p className="text-sm text-gray-500">
         Phone: {rider.phoneNumber}

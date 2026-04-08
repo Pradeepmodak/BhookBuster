@@ -27,6 +27,9 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
             }
         });
         const userData = data.user ?? data;
+        if (data.token) {
+            localStorage.setItem("token", data.token);
+        }
         setUser(userData);
         if (userData) setIsAuth(true);
     } catch (error) {

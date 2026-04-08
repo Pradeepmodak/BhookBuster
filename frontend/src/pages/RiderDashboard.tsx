@@ -10,6 +10,7 @@ import type { IOrder } from "../types";
 import RiderOrderRequest from "../components/RiderOrderRequest";
 import RiderCurrentOrder from "../components/RiderCurrentOrder";
 import RiderOrderMap from "../components/RiderOrderMap";
+import VerificationBadge from "../components/VerificationBadge";
 
 interface IRider {
   _id: string;
@@ -74,7 +75,7 @@ useEffect(() => {
   socket.on('order:available', onOrderAvailable);
 
   return () => {
-    socket.off('order_available', onOrderAvailable);
+    socket.off('order:available', onOrderAvailable);
   };
 },[socket,audioUnlocked]);
 const fetchProfile = async () => {
@@ -152,7 +153,7 @@ toast.success(
   profile?.isAvailable ? "You are offline" : "You are online");
 fetchProfile();
 } catch (error: any) {
-  toast.error(error.response.data.message);
+  toast.error(error?.response?.data?.message || "Failed to toggle availability");
 } finally {
   setToggling(false);
 }
@@ -203,7 +204,7 @@ const { data } = await axios.post(
 toast.success(data.message);
 fetchProfile();
 } catch (error: any) {
-  toast.error(error.response.data.message);
+  toast.error(error?.response?.data?.message || "Failed to submit profile");
 } finally {
   setSubmitting(false);
 }
@@ -263,11 +264,9 @@ if(!profile){
       {profile.phoneNumber}
     </p>
 
-    <div className="flex justify-center gap-2">
-      <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">
-        {profile.isVerified?"Verified":"Pending"}
-      </span>
-            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">
+    <div className="flex justify-center gap-2 mt-1">
+      <VerificationBadge isVerified={profile.isVerified} size={16} />
+      <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 font-semibold border border-green-200">
         {profile.isAvailable?"Online":"Offline"}
       </span>
     </div>

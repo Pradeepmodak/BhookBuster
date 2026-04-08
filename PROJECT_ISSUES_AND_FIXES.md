@@ -140,7 +140,95 @@ This document details the critical issues found in the BhookBuster food delivery
 - Verify connection credentials in `.env`
 - Once fixed, restart restaurant service to establish connection
 
-## Services Status After Fixes
+### 15. **Manual Database Role Update Not Synchronizing via JWT**
+**Issue:** When a user's role was manually updated in the MongoDB cluster (e.g., from `customer` to `admin`), the frontend failed to persist this updated role into the local storage JWT. Consequently, requests to other microservices (such as the admin service) that solely perform rapid token verification would still read the old `customer` role and mistakenly deny access.
+- The `/api/auth/me` route accurately pulled the updated database user into the `isAuth` middleware but didn't return a freshly signed token.
+- The frontend `fetchUser` logic updated the React Context user state but left `localStorage` unchanged, resulting in mismatched role evaluations locally vs externally.
+
+**Fix:**
+- Updated `services/auth/src/controllers/auth.ts` (`myProfile` controller) to generate and return a new JWT token representing the fresh user state.
+- Modified `frontend/src/context/AppContext.tsx` (`fetchUser` request) to capture the incoming token from `/api/auth/me` and overwrite the `localStorage` token string if provided.
+
+### 16. **Frontend using incorrect verification routes (404 Error)**
+**Issue:** When attempting to verify a restaurant or rider from the Admin dashboard, the frontend would fail with a 404 Not Found error. This was caused by the frontend sending patch requests to `/api/v1/verify/...` instead of the backend's correct API prefix which was registered as `/v1/api/verify/...`.
+
+**Fix:**
+- Updated `@/components/AdminRestaurantCard.tsx` from `${adminService}/api/v1/verify/restaurant/...` to `${adminService}/v1/api/verify/restaurant/...`.
+- Updated `@/components/AdminRiderCard.tsx` from `${adminService}/api/v1/verify/rider/...` to `${adminService}/v1/api/verify/rider/...`.
+
+### 17. **Add To Cart — Swapped Parameters Causing Null Crash**
+**Issue:** The `addToCart` onClick handler in `MenuItems.tsx` passed `(item._id, item.restaurantId)` — swapping `itemId` as `restaurantId` and vice versa. This caused Cart documents to be created with the restaurant's ObjectId in the `itemId` field. When `fetchMyCart` populated these entries, the `itemId` resolved to `null` (no matching MenuItem), crashing the server with `Cannot read properties of null (reading 'price')`.
+
+**Fix:**
+- Corrected parameter order to `addToCart(item.restaurantId, item._id)` in `MenuItems.tsx`.
+- Added null-safe population handling in `cart.ts` — corrupted entries are auto-purged from the database and excluded from the API response.
+
+### 18. **Backend fetchMyCart — No Null Safety on Populated Items**
+**Issue:** The `fetchMyCart` controller directly accessed `item.price` without checking if the populated `itemId` reference was valid. If a menu item was deleted while a user still had it in their cart, the server would crash with a 500 error.
+
+**Fix:**
+- Added `if (item && item.price)` guard before accessing price properties.
+- Implemented self-healing: invalid cart entries are automatically deleted from MongoDB via `Cart.findByIdAndDelete()` and filtered out of the response payload.
+
+### 19. **Backend decrementCartItem — Missing Return After Delete**
+**Issue:** When a cart item's quantity reached 1 and the user decremented, the code deleted the cart entry and called `res.json()`, but did NOT `return`. Execution fell through to `cartItem.quantity -= 1` and `cartItem.save()` on a deleted document, then attempted to send a SECOND response — crashing with `Error: Cannot set headers after they are sent to the client`.
+
+**Fix:**
+- Added `return` before `res.json()` in the `quantity === 1` branch to prevent fall-through.
+
+### 20. **Backend createOrder — deleteOne Instead of deleteMany**
+**Issue:** After creating an order, `Cart.deleteOne({userId})` only deleted ONE cart item. If the user ordered 3 items (3 cart documents), 2 remained as ghost entries in the database, potentially causing stale cart data on next visit.
+
+**Fix:**
+- Changed `Cart.deleteOne()` to `Cart.deleteMany()` to clear all cart items for the user after order creation.
+
+### 21. **Cart Page — Duplicate Decrease Button**
+**Issue:** `Cart.tsx` rendered TWO decrease buttons for each cart item (one at line 131 and a duplicate at line 159). This confused users and could trigger double-decrement requests.
+
+**Fix:**
+- Removed the duplicate decrease button block.
+
+### 22. **Backend updateOrderStatusRider — No Fallback Response**
+**Issue:** In `order.ts`, if `order.status` was neither `rider_assigned` nor `picked_up`, no response was ever sent. The HTTP request would hang indefinitely until timeout.
+
+**Fix:**
+- Added a fallback `return res.status(400).json({ message: "Cannot update order with current status" })` at the end of the function.
+
+### 23. **Socket Cleanup Uses Wrong Event Name**
+**Issue:** `RiderDashboard.tsx` subscribed to `socket.on('order:available', ...)` but cleaned up with `socket.off('order_available', ...)` (underscore vs colon). The cleanup never actually removed the listener, causing duplicate listeners to accumulate on every re-render and triggering duplicate order notifications.
+
+**Fix:**
+- Corrected cleanup to `socket.off('order:available', onOrderAvailable)`.
+
+### 24. **Seller Dashboard — Stray Text in JSX**
+**Issue:** `Restaurant.tsx` line 101 contained `Here's the text from the image:` — plain text accidentally pasted into JSX, rendering as visible text in the seller dashboard UI.
+
+**Fix:**
+- Removed the stray text.
+
+### 25. **Unused Import in order.ts**
+**Issue:** `import { count } from "console"` was never used.
+
+**Fix:**
+- Removed the unused import.
+
+### 26. **Unsafe Error Handling — Crashes on Network Failure**
+**Issue:** Multiple components accessed `error.response.data.message` without null-safe checks. When the server was unreachable (no `response` object), this crashed with `Cannot read properties of undefined`.
+
+**Fix:**
+- Changed all instances to `error?.response?.data?.message || "Fallback message"` in `MenuItems.tsx` and `RiderDashboard.tsx`.
+
+### 27. **Infinite Page Reload Loop for Seller Dashboard**
+**Issue:** When a seller logged in, the app entered an infinite reload loop:
+1. `Restaurant.tsx` called `fetchMyRestaurant()` → backend saw no `restaurantId` in JWT → returned a new token with `restaurantId` embedded.
+2. `Restaurant.tsx` saved the token and called `window.location.reload()`.
+3. On reload, `AppContext.fetchUser()` hit the auth service's `myProfile` endpoint, which **re-signed a brand new JWT** from `req.user` — this new token did NOT contain `restaurantId` (auth service doesn't know about it), overwriting the one that did.
+4. App rendered `<Restaurant />` again → `fetchMyRestaurant()` → no `restaurantId` → new token → reload → infinite loop!
+
+**Fix:**
+- **Auth service (`auth.ts`):** Removed token re-signing from `myProfile`. This endpoint now returns only `{ user }` without generating a new token. Token refresh only happens during login or explicit role changes.
+- **Frontend (`Restaurant.tsx`):** Replaced `window.location.reload()` with `fetchUser()` from AppContext. This refreshes React state gracefully without destroying the entire app and re-triggering the auth chain.
+
 
 All services now start successfully:
 - Frontend: Running on http://localhost:5174
