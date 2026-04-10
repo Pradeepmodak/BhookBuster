@@ -13,144 +13,122 @@ const ACTIVE_STATUSES = [
   "rider_assigned",
   "picked_up",
 ];
-// component Order row
+
+const formatCurrency = (value: number) => `Rs ${value}`;
+
 const OrderRow = ({
   order,
   onClick,
 }: {
   order: IOrder;
   onClick: () => void;
-}) => {
-  return (
-    <div
-      className="cursor-pointer rounded-xl bg-white p-4 shadow-sm hover:bg-gray-50"
-      onClick={onClick}
-    >
-      <div className="flex justify-between items-center">
-        <p className="text-sm font-medium">Order #{order._id.slice(-6)}</p>
-        <span className="text-xs capitalize text-gray-500">{order.status}</span>
-      </div>
-      <div className="mt-2 text-sm text-gray-600">
-{order?.items?.map((item) => (
-  <span key={item.itemId}>
-    {item.name} x {item.quantity}
-    {item !== order.items[order.items.length - 1] && ", "}
-  </span>
-))}
-</div>
-
-<div className="mt-2 flex justify-between text-sm font-medium">
-  <span>Total</span>
-  <span>{order.totalAmount}</span>
-</div>
+}) => (
+  <div
+    className="cursor-pointer rounded-[26px] border border-white/10 bg-[#171717] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition hover:border-[#facc15]/40"
+    onClick={onClick}
+  >
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-medium">Order #{order._id.slice(-6)}</p>
+      <span className="rounded-full bg-[#facc15]/10 px-3 py-1 text-xs capitalize text-[#facc15]">
+        {order.status.replaceAll("_", " ")}
+      </span>
     </div>
-  );
-};
+
+    <div className="mt-3 text-sm text-neutral-400">
+      {order.items.map((item) => `${item.name} x ${item.quantity}`).join(", ")}
+    </div>
+
+    <div className="mt-4 flex justify-between text-sm font-medium">
+      <span>Total</span>
+      <span>{formatCurrency(order.totalAmount)}</span>
+    </div>
+  </div>
+);
+
 const Orders = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState(true);
-const navigate = useNavigate();
-const { socket } = useSocket();
+  const navigate = useNavigate();
+  const { socket } = useSocket();
 
-const fetchOrders = async () => {
-  try {
-    const { data } = await axios.get(
-      `${restaurantService}/api/order/my`,
-      {
+  const fetchOrders = async () => {
+    try {
+      const { data } = await axios.get(`${restaurantService}/api/order/my`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-      }
-    );
-    setOrders(data.orders);
-  } catch (error) {
-  console.log(error);
-  }finally{
-    setLoading(false);
-  }
-};
-useEffect(() => {
-  fetchOrders();
-}, []);
-
-
-// Whenever the backend tells me an order changed, I will refresh my orders list.”
-// “We subscribe to a WebSocket event inside useEffect and clean up the listener to prevent memory leaks, enabling real-time UI updates.”
-useEffect(() => {
-  if (!socket) return;
-
-//    “If I receive update → call API again”
-  const onOrderUpdate = () => {
-    fetchOrders();
+      });
+      setOrders(data.orders);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-//    “Hey socket, when you receive order:update, run this function”
-  socket.on("order:update", onOrderUpdate);
-  socket.on("order:rider_assigned", onOrderUpdate);
-    return () => {
-        socket.off("order:update", onOrderUpdate);
-        socket.off("order:rider_assigned",onOrderUpdate);
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onOrderUpdate = () => {
+      fetchOrders();
     };
-}, [socket]);
 
+    socket.on("order:update", onOrderUpdate);
+    socket.on("order:rider_assigned", onOrderUpdate);
+    return () => {
+      socket.off("order:update", onOrderUpdate);
+      socket.off("order:rider_assigned", onOrderUpdate);
+    };
+  }, [socket]);
 
-if (loading) {
-  return <p className="text-center text-gray-500">Loading orders...</p>;
-}
+  if (loading) {
+    return <p className="py-12 text-center text-neutral-400">Loading orders...</p>;
+  }
 
-if (orders.length === 0) {
+  if (orders.length === 0) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center bg-[#0f0f0f]">
+        <p className="text-neutral-400">No orders yet</p>
+      </div>
+    );
+  }
+
+  const activeOrders = orders.filter((order) => ACTIVE_STATUSES.includes(order.status));
+  const completedOrders = orders.filter((order) => !ACTIVE_STATUSES.includes(order.status));
+
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <p className="text-gray-500">No orders yet</p>
+    <div className="mx-auto max-w-5xl px-4 py-8 text-white">
+      <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+        <h1 className="text-3xl font-semibold">My Orders</h1>
+        <p className="mt-2 text-sm text-neutral-400">Track live progress and revisit completed deliveries.</p>
+
+        <section className="mt-8 space-y-4">
+          <h2 className="text-xl font-semibold">Active Orders</h2>
+          {activeOrders.length === 0 ? (
+            <p className="text-neutral-400">No active orders</p>
+          ) : (
+            activeOrders.map((order) => (
+              <OrderRow key={order._id} order={order} onClick={() => navigate(`/order/${order._id}`)} />
+            ))
+          )}
+        </section>
+
+        <section className="mt-10 space-y-4">
+          <h2 className="text-xl font-semibold">Completed Orders</h2>
+          {completedOrders.length === 0 ? (
+            <p className="text-neutral-400">No completed orders</p>
+          ) : (
+            completedOrders.map((order) => (
+              <OrderRow key={order._id} order={order} onClick={() => navigate(`/order/${order._id}`)} />
+            ))
+          )}
+        </section>
+      </div>
     </div>
   );
-}
-const activeOrders = orders.filter((o) =>
-  ACTIVE_STATUSES.includes(o.status)
-);
-
-const completedOrders = orders.filter(
-  (o) => !ACTIVE_STATUSES.includes(o.status)
-);
-
-return (
-  <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
-    <h1 className="text-2xl font-bold">My Orders</h1>
-    
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Active Orders</h2>
-      {
-  activeOrders.length === 0 ? (
-    <p>No active orders</p>
-  ) : (
-    activeOrders.map((order) => (
-      <OrderRow
-        key={order._id}
-        order={order}
-        onClick={() => navigate(`/order/${order._id}`)}
-      />
-    ))
-  )
-}
-    </section>
-        <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Completed Orders</h2>
-      {
-  completedOrders.length === 0 ? (
-    <p>No completed orders</p>
-  ) : (
-    completedOrders.map((order) => (
-      <OrderRow
-        key={order._id}
-        order={order}
-        onClick={() => navigate(`/order/${order._id}`)}
-      />
-    ))
-  )
-}
-    </section>
-  </div>
-);
 };
 
 export default Orders;

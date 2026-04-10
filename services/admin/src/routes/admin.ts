@@ -1,6 +1,14 @@
 import express from "express";
 import { isAdmin, isAuth } from "../middlewares/isAuth.js";
-import { getPendingRestaurant, getPendingRiders, verifyRestaurant, verifyRider } from "../controllers/admin.js";
+import {
+  getAdminStats,
+  getOrdersTrend,
+  getPendingRestaurant,
+  getPendingRiders,
+  getTopItems,
+  verifyRestaurant,
+  verifyRider,
+} from "../controllers/admin.js";
 
 
 const router = express.Router();
@@ -12,6 +20,24 @@ router.get(
 	isAuth,
 	isAdmin,
 	getPendingRestaurant as RequestHandler
+);
+router.get(
+	"/admin/stats",
+	isAuth,
+	isAdmin,
+	getAdminStats as RequestHandler
+);
+router.get(
+	"/admin/top-items",
+	isAuth,
+	isAdmin,
+	getTopItems as RequestHandler
+);
+router.get(
+	"/admin/orders-trend",
+	isAuth,
+	isAdmin,
+	getOrdersTrend as RequestHandler
 );
 router.get(
 	"/admin/rider/pending",

@@ -1,9 +1,11 @@
 import { AuthenticatedRequest } from "../middlewares/isAuth.js"
 import TryCatch from "../middlewares/trycatch.js"
+import { AppError } from "../middlewares/errorHandler.js";
 import Restaurant from "../models/Restaurant.js";
 import getBuffer from "../config/datauri.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
+import { fetchNearbyRestaurants } from "../services/catalog.js";
 
 export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => {
     const user = req.user;
@@ -194,46 +196,17 @@ export const getNearbyRestaurant = TryCatch(async (req, res) => {
   const { latitude, longitude, radius = 5000, search = "" } = req.query;
 
   if (!latitude || !longitude) {
-    return res.status(400).json({
-      message: "Latitude and longitude are required",
-    });
+    throw new AppError("Latitude and longitude are required", 400);
   }
 
-  const query: any = {
-    isVerified: true,
-  };
+  const restaurants = await fetchNearbyRestaurants({
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+    radius: Number(radius),
+    search: String(search || ""),
+  });
 
-  if (search && typeof search === "string") {
-  query.name = { $regex: search, $options: "i" }; // search by name (case-insensitive)
-  }
-const restaurants = await Restaurant.aggregate([
-  {
-    $geoNear: {
-      near: {
-        type: "Point",
-        coordinates: [Number(longitude), Number(latitude)],
-      },
-      distanceField: "distance",
-      maxDistance: Number(radius),
-      spherical: true,
-      query,
-    },
-},
-{
-  $sort: {
-    isOpen: -1,
-    distance: 1,
-  },
-},
-{
-  $addFields: {
-    distanceKm: {
-      $round: [{ $divide: ["$distance", 1000] }, 2],
-    },
-  },
-}
-]);
-res.json({
+  res.json({
     success:true,
     count:restaurants.length,
     restaurants,
@@ -242,5 +215,8 @@ res.json({
 
 export const fetchSingleRestaurant = TryCatch(async (req, res) => {
   const restaurant = await Restaurant.findById(req.params.id);
+  if (!restaurant) {
+    throw new AppError("Restaurant not found", 404);
+  }
   res.json(restaurant);
 });

@@ -1,97 +1,52 @@
-import { ObjectId } from "mongodb";
 import TryCatch from "../middlewares/trycatch.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { ObjectId } from "mongodb";
 import {
-  getRestaurantCollection,
-  getRiderCollection,
-} from "../utils/collection.js";
+  fetchAdminStats,
+  fetchOrdersTrend,
+  fetchPendingRestaurants,
+  fetchPendingRiders,
+  fetchTopItems,
+  markRestaurantVerified,
+  markRiderVerified,
+} from "../services/admin.js";
 
 export const getPendingRestaurant = TryCatch(async (req, res) => {
-  const restaurants = await (await getRestaurantCollection()).find(
-    { isVerified: false }
-  ).toArray();
-
-res.json({
-    count:restaurants.length,
-    restaurants,
-})
+  res.json(await fetchPendingRestaurants());
 });
 export const getPendingRiders = TryCatch(async (req, res) => {
-  const riders = await (await getRiderCollection()).find(
-    { isVerified: false }
-  ).toArray();
-
-res.json({
-    count:riders.length,
-    riders,
-})
+  res.json(await fetchPendingRiders());
 });
 
 export const verifyRestaurant = TryCatch(async (req, res) => {
   const { id } = req.params;
 
-  if (typeof id !== "string") {
-    return res.status(400).json({
-      message: "invalid restaurant id",
-    });
+  if (typeof id !== "string" || !ObjectId.isValid(id)) {
+    throw new AppError("Invalid restaurant id", 400);
   }
 
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({
-      message: "Invalid object id",
-    });
-  }
-  const result = await (
-  await getRestaurantCollection()
-).updateOne(
-  { _id: new ObjectId(id) },
-  {
-    $set: {
-      isVerified: true,
-      updatedAt: new Date(),
-    },
-  },
-);
-if(result.matchedCount==0){
-    return res.status(404).json({
-        message:"Restaurant not found",
-    })
-}
-res.json({
-    message:"Restaurant verified successfully",
-})
+  res.json(await markRestaurantVerified(id));
 });
 
 export const verifyRider = TryCatch(async (req, res) => {
   const { id } = req.params;
 
-  if (typeof id !== "string") {
-    return res.status(400).json({
-      message: "invalid rider id",
-    });
+  if (typeof id !== "string" || !ObjectId.isValid(id)) {
+    throw new AppError("Invalid rider id", 400);
   }
 
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({
-      message: "Invalid object id",
-    });
-  }
-  const result = await (
-  await getRiderCollection()
-).updateOne(
-  { _id: new ObjectId(id) },
-  {
-    $set: {
-      isVerified: true,
-      updatedAt: new Date(),
-    },
-  },
-);
-if(result.matchedCount==0){
-    return res.status(404).json({
-        message:"Rider not found",
-    })
-}
-res.json({
-    message:"Rider verified successfully",
-})
+  res.json(await markRiderVerified(id));
+});
+
+export const getAdminStats = TryCatch(async (_req, res) => {
+  res.json(await fetchAdminStats());
+});
+
+export const getTopItems = TryCatch(async (_req, res) => {
+  res.json(await fetchTopItems());
+});
+
+export const getOrdersTrend = TryCatch(async (req, res) => {
+  const days = Number(req.query.days || 7);
+  res.json(await fetchOrdersTrend(days));
 });

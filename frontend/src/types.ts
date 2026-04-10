@@ -120,3 +120,30 @@ expiresAt: Date;
 createdAt: Date;
 updatedAt: Date;
 }
+
+export interface AdminStats {
+  totalRevenue: number;
+  ordersCount: number;
+  usersCount: number;
+  growthPercent: number;
+  orderGrowthPercent: number;
+  peakOrderTime: string;
+  pendingRestaurants: number;
+  pendingRiders: number;
+  cached?: boolean;
+}
+
+export interface OrdersTrendPoint {
+  label: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface TopSellingItem {
+  id: string;
+  name: string;
+  quantitySold: number;
+  revenue: number;
+  image?: string;
+  description?: string;
+}

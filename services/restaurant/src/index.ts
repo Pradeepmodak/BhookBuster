@@ -9,9 +9,12 @@ import addressRoutes from "./routes/address.js"
 import orderRoutes from "./routes/order.js"
 import { connectRabbitMQ } from './config/rabbitmq.js';
 import { startPaymentConsumer } from './config/payment.consumer.js';
+import { connectRedis } from './cache/redis.js';
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 dotenv.config();
 // Pause THIS function until promise resolves
 await connectDB();
+await connectRedis();
 await connectRabbitMQ();
 startPaymentConsumer();
 const app = express();
@@ -23,6 +26,8 @@ app.use("/api/item",itemRoutes);
 app.use("/api/cart",cartRoutes);
 app.use("/api/address",addressRoutes);
 app.use("/api/order",orderRoutes);
+app.use(notFoundHandler);
+app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Restaurant service is running on port ${PORT}`);
 });
