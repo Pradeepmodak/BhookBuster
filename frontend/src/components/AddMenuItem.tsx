@@ -4,87 +4,126 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { BiUpload } from "react-icons/bi";
 
-const AddMenuItem = ({onItemAdded}:{onItemAdded:()=>void}) => {
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [price, setPrice] = useState("");
-    const [image, setImage] = useState<File | null>(null);
-    const [loading, setLoading] = useState(false);
+const AddMenuItem = ({ onItemAdded }: { onItemAdded: () => void }) => {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const resetForm = () => {
-        setName("")
-        setDescription("")
-        setPrice("")
-        setImage(null)
-    };
-const handleSubmit = async () => {
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setPrice("");
+    setImage(null);
+  };
+
+  const handleSubmit = async () => {
     if (!name || !price || !image) {
-        alert("Name price and image is required");
-        return;
+      toast.error("Name, price and image are required");
+      return;
     }
 
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("description", description);
+    formData.append("price", price);
+    formData.append("file", image);
 
-    const formData = new FormData()
-
-    formData.append("name", name)
-    formData.append("description", description)
-    formData.append("price", price)
-    formData.append("file", image)
-      
     try {
-        setLoading(true);
-        await axios.post(`${restaurantService}/api/item/new`,formData,{
-            headers:{
-                Authorization:`Bearer ${localStorage.getItem("token")}`,
-            },
-        });
-        toast.success("Item added successfully");
-        resetForm();
-        onItemAdded(); // as props
+      setLoading(true);
+      await axios.post(`${restaurantService}/api/item/new`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      toast.success("Item added successfully");
+      resetForm();
+      onItemAdded();
     } catch (error) {
-        console.log(error);
-        toast.error("Failed to add item");
-    }finally{
-        setLoading(false);
+      console.log(error);
+      toast.error("Failed to add item");
+    } finally {
+      setLoading(false);
     }
-};
-    return (
-  <div className="max-w-md space-y-4 m-auto">
-    <h2 className="text-lg font-semibold">Add Menu Item</h2>
-    <input
-      type="text"
-      placeholder="Item name"
-      value={name}
-      onChange={(e) => setName(e.target.value)}
-      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
-    />
-        <textarea
-      placeholder="Item description"
-      value={description}
-      onChange={(e) => setDescription(e.target.value)}
-      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
-    />
+  };
+
+  return (
+    <div className="max-w-md mx-auto space-y-4">
+      <h2 className="text-lg font-semibold text-[#f0c040]">Add Menu Item</h2>
+
+      {/* Name */}
+      <input
+        type="text"
+        placeholder="Item name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 outline-none focus:border-[#d4a017] transition-colors"
+      />
+
+      {/* Description */}
+      <textarea
+        placeholder="Item description (optional)"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={3}
+        className="w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 outline-none focus:border-[#d4a017] transition-colors resize-none"
+      />
+
+      {/* Price */}
+      <input
+        type="number"
+        placeholder="Price ₹"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        className="w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 outline-none focus:border-[#d4a017] transition-colors"
+      />
+
+      {/* Image Upload */}
+      <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[#333] border-dashed bg-[#1a1a1a] p-4 text-sm text-gray-500 hover:border-[#d4a017] hover:text-[#f0c040] transition-colors">
+        <BiUpload className="h-5 w-5 text-[#d4a017] shrink-0" />
+        <span className="truncate">
+          {image ? image.name : "Upload item image"}
+        </span>
         <input
-      type="number"
-      placeholder="price ₹"
-      value={price}
-      onChange={(e) => setPrice(e.target.value)}
-      className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
-    />
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm text-gray-600 hover:bg-gray-50">
-        <BiUpload className="h-5 w-5 text-red-500" />
-        {image ? image.name : "Upload restaurant image"}
-        <input type="file" accept='image/*' onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)} className="hidden" />
-    </label>
-    <button
-  disabled={loading}
-  onClick={handleSubmit}
-  className="w-full rounded-lg bg-text-white text-sm py-3 font-semibold transition bg-red-500 cursor-pointer"
->
-  {loading ? "Adding..." : "Add Item"}
-</button>
-  </div>
-);
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImage(e.target.files ? e.target.files[0] : null)}
+          className="hidden"
+        />
+      </label>
+
+      {/* Image Preview */}
+      {image && (
+        <div className="relative w-full h-40 rounded-lg overflow-hidden border border-[#333]">
+          <img
+            src={URL.createObjectURL(image)}
+            alt="Preview"
+            className="w-full h-full object-cover"
+          />
+          <button
+            onClick={() => setImage(null)}
+            className="absolute top-2 right-2 bg-black/60 text-gray-300 hover:text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Submit */}
+      <button
+        disabled={loading}
+        onClick={handleSubmit}
+        className={`w-full rounded-lg py-3 text-sm font-semibold transition-all
+          ${loading
+            ? "bg-[#2a2a2a] text-gray-500 cursor-not-allowed border border-[#333]"
+            : "bg-[#d4a017] hover:bg-[#f0c040] text-[#1a1a1a] cursor-pointer"
+          }`}
+      >
+        {loading ? "Adding..." : "Add Item"}
+      </button>
+    </div>
+  );
 };
 
 export default AddMenuItem;
