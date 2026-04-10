@@ -140,7 +140,7 @@ const AddAddressPage = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setAddresses(data || []);
+      setAddresses(data.addresses || []);
     } catch {
       toast.error("Failed to load addresses");
     } finally {

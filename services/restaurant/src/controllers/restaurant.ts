@@ -153,6 +153,43 @@ export const updateRestaurant = TryCatch(async (req: AuthenticatedRequest, res) 
     })
 });
 
+export const updateRestaurantImage = TryCatch(async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(403).json({ message: "Please Login" });
+    }
+
+    const file = req.file;
+    if (!file) {
+        return res.status(400).json({ message: "Image file is required" });
+    }
+
+    const fileBuffer = getBuffer(file);
+    if (!fileBuffer?.content) {
+        return res.status(500).json({ message: "Failed to process image format" });
+    }
+
+    // Upload image to utils microservice
+    const { data: uploadResult } = await axios.post(
+        `${process.env.UTILS_SERVICE}/api/upload`,
+        { buffer: fileBuffer.content }
+    );
+
+    const restaurant = await Restaurant.findOneAndUpdate(
+        { ownerId: req.user._id },
+        { image: uploadResult.url },
+        { new: true }
+    );
+
+    if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    res.json({
+        message: "Restaurant image updated successfully!",
+        restaurant,
+    });
+});
+
 export const getNearbyRestaurant = TryCatch(async (req, res) => {
   const { latitude, longitude, radius = 5000, search = "" } = req.query;
 

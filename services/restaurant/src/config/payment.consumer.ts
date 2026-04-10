@@ -1,5 +1,6 @@
 import axios from "axios";
 import Order from "../models/Order.js";
+import Cart from "../models/Cart.js";
 import { getChannel } from "./rabbitmq.js";
 
 // listening to the queue
@@ -39,7 +40,10 @@ if(!order){
     channel.ack(msg);
     return;
 }
-console.log("✅Order Placed: ",order._id)
+
+// Clear user's cart ONLY after payment success
+await Cart.deleteMany({ userId: order.userId });
+console.log(`✅ Order ${order._id} Placed & Cart Cleared`);
 
 // socket work
 await axios.post(

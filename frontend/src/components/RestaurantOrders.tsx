@@ -71,24 +71,33 @@ useEffect(() => {
   fetchOrders();
 }, [restaurantId]);
 useEffect(() => {
-  if (!socket) return;
+  if (!socket || !restaurantId) return;
+
+  const roomName = `restaurant:${restaurantId}`;
+  
+  // Explicitly join the restaurant's notification room
+  socket.emit("join-room", roomName);
 
   const onNewOrder = () => {
-    console.log("New Order received socket");
+    console.log("New order event received via socket, refreshing...");
 
     if (audioUnlocked && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
-        console.error("Audio play failed:", err);
+        console.error("Notification sound failed to play:", err);
       });
     }
     fetchOrders();
   };
-  socket.on("new_order", onNewOrder);
+
+  // Match the event name emitted by the backend
+  socket.on("order:new", onNewOrder);
+
   return () => {
-    socket.off("new_order", onNewOrder);
+    socket.off("order:new", onNewOrder);
+    socket.emit("leave-room", roomName);
   };
-}, [socket, audioUnlocked]);
+}, [socket, audioUnlocked, restaurantId]);
 
 useEffect(() => {
   if (!socket) return;

@@ -11,6 +11,8 @@ import RiderOrderRequest from "../components/RiderOrderRequest";
 import RiderCurrentOrder from "../components/RiderCurrentOrder";
 import RiderOrderMap from "../components/RiderOrderMap";
 import VerificationBadge from "../components/VerificationBadge";
+import RiderEarnings from "../components/RiderEarnings";
+import RiderEditProfile from "../components/RiderEditProfile";
 
 interface IRider {
   _id: string;
@@ -34,6 +36,9 @@ const [currentOrder, setCurrentOrder] = useState<IOrder | null>(null);
 
 const [audioUnlocked, setAudioUnlocked] = useState(false);
 const audioRef = useRef<HTMLAudioElement | null>(null);
+
+const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [activeTab, setActiveTab] = useState<"deliveries" | "earnings">("deliveries");
 
 useEffect(() => {
   audioRef.current = new Audio(audio);
@@ -115,14 +120,15 @@ const fetchCurrentOrder = async () => {
     );
 
     setCurrentOrder(data.order);
-  } catch (error) {
-    console.log(error);
+  } catch {
     setCurrentOrder(null);
   }
 };
-useEffect(()=>{
-  fetchCurrentOrder();
-},[])
+useEffect(() => {
+  if (profile) {
+    fetchCurrentOrder();
+  }
+}, [profile]);
 
 const toggleAvailability = async () => {
   if (!navigator.geolocation) {
@@ -137,7 +143,7 @@ const toggleAvailability = async () => {
 navigator.geolocation.getCurrentPosition(async (pos) => {
   try {
     await axios.patch(
-      `${riderService}/api/toggle`,
+      `${riderService}/api/rider/toggle`,
       {
         isAvailable: !profile?.isAvailable,
         latitude: pos.coords.latitude,
@@ -251,99 +257,169 @@ if(!profile){
         </div>
       )
 }
-  return <div className="space-y-4">
-  <div className="mx-auto max-w-md px-4 py-4">
-    <div className="rounded-xl bg-white p-4 shadow space-y-3">
-    <img
-      src={profile.picture}
-      className="mx-auto h-24 w-24 rounded-full object-cover"
-      alt=""
-    />
-    <p className="text-center font-semibold">{user?.name}</p>
-    <p className="text-center text-sm text-gray-500">
-      {profile.phoneNumber}
-    </p>
 
-    <div className="flex justify-center gap-2 mt-1">
-      <VerificationBadge isVerified={profile.isVerified} size={16} />
-      <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 font-semibold border border-green-200">
-        {profile.isAvailable?"Online":"Offline"}
-      </span>
-    </div>
-    <div>
-  <p className="text-blue-400">
-    Please be within a 500 m radius of any restaurant (which we call a hotspot) before going online as a rider to receive orders.
-  </p>
-</div>
-{profile.isVerified && !currentOrder &&  (
-  <button
-    onClick={toggleAvailability}
-    disabled={toggling}
-    className={`w-full py-2 rounded-lg text-white font-semibold ${
-      toggling
-        ? "bg-gray-400"
-        : profile.isAvailable
-        ? "bg-gray-600"
-        : "bg-[#e23744]"
-    }`}
-  >{toggling
-  ? "Updating..."
-  : profile.isAvailable
-  ? "Go Offline"
-  : "Go Online"}
-  </button>
-)}
-    </div>
-  </div>
-      {/* Show this UI ONLY if audio is NOT unlocked */}
-    {!audioUnlocked && (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🔔</span>
+  return (
+    <div className="space-y-4 pb-12">
+      {/* Profile Header */}
+      <div className="mx-auto max-w-md px-4 py-4">
+        <div className="relative rounded-xl bg-white p-4 shadow space-y-3">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="absolute top-4 right-4 text-xs font-semibold text-blue-600 hover:text-blue-800"
+          >
+            Edit Profile
+          </button>
+          <img
+            src={profile.picture}
+            className="mx-auto h-24 w-24 rounded-full object-cover"
+            alt=""
+          />
+          <p className="text-center font-semibold">{user?.name}</p>
+          <p className="text-center text-sm text-gray-500">
+            {profile.phoneNumber}
+          </p>
+
+          <div className="flex justify-center gap-2 mt-1">
+            <VerificationBadge isVerified={profile.isVerified} size={16} />
+            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 font-semibold border border-green-200">
+              {profile.isAvailable?"Online":"Offline"}
+            </span>
+          </div>
+          <div>
+            <p className="text-blue-400 text-sm text-center">
+              Please be within a 5km radius of a restaurant hotspot to receive orders.
+            </p>
+          </div>
+          {profile.isVerified && !currentOrder &&  (
+            <button
+              onClick={toggleAvailability}
+              disabled={toggling}
+              className={`w-full py-2 rounded-lg text-white font-semibold shadow-sm transition-colors ${
+                toggling
+                  ? "bg-gray-400"
+                  : profile.isAvailable
+                  ? "bg-gray-600 hover:bg-gray-700"
+                  : "bg-[#e23744] hover:bg-[#c12635]"
+              }`}
+            >
+              {toggling
+                ? "Updating..."
+                : profile.isAvailable
+                ? "Go Offline"
+                : "Go Online"}
+            </button>
+          )}
         </div>
-        <div>
-  <p className="font-medium text-blue-900">
-    Enable Sound Notification
-  </p>
-  <p className="text-sm text-blue-700">
-    Get Notified when new orders arrive
-  </p>
-</div>
-<button
-  onClick={unlockAudio}
-  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
->
-  Enable sound
-</button>
       </div>
-    )}
 
-    {profile.isAvailable && incomingOrders.length > 0 && (
-  <div className="mx-auto max-w-md px-4 space-y-3">
-    <h3 className="font-semibold text-gray-700">Incoming Orders</h3>
+      {/* Tabs */}
+      <div className="mx-auto max-w-md px-4">
+        <div className="flex rounded-lg bg-gray-200 p-1">
+          <button
+            onClick={() => setActiveTab("deliveries")}
+            className={`flex-1 rounded-md py-2 text-sm font-semibold transition-all ${
+              activeTab === "deliveries"
+                ? "bg-white text-gray-800 shadow shadow-black/5"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Active Deliveries
+          </button>
+          <button
+            onClick={() => setActiveTab("earnings")}
+            className={`flex-1 rounded-md py-2 text-sm font-semibold transition-all ${
+              activeTab === "earnings"
+                ? "bg-white text-gray-800 shadow shadow-black/5"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            My Earnings
+          </button>
+        </div>
+      </div>
 
-{incomingOrders.map((id) => (
-  <RiderOrderRequest
-    key={id}
-    orderId={id}
-    onAccepted={() => {
-      fetchProfile();
-      fetchCurrentOrder();
-    }}
-  />
-))}
-  </div>
-)}
-{currentOrder && (
-  <div className="mx-auto max-w-md px-4 space-y-4">
-    <RiderCurrentOrder
-      order={currentOrder}
-      onStatusUpdate={fetchCurrentOrder}
-    />
-    <RiderOrderMap order={currentOrder}/>
-  </div>
-)}
-</div>
+      {/* Tab Content */}
+      {activeTab === "deliveries" ? (
+        <div className="space-y-4">
+          {/* Show this UI ONLY if audio is NOT unlocked */}
+          {!audioUnlocked && (
+            <div className="mx-auto max-w-md px-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔔</span>
+                </div>
+                <div>
+                  <p className="font-medium text-blue-900">
+                    Enable Sound Notification
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    Get Notified when new orders arrive
+                  </p>
+                </div>
+                <button
+                  onClick={unlockAudio}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                >
+                  Enable sound
+                </button>
+              </div>
+            </div>
+          )}
+
+          {profile.isAvailable && incomingOrders.length > 0 && (
+            <div className="mx-auto max-w-md px-4 space-y-3">
+              <h3 className="font-semibold text-gray-700">Incoming Orders</h3>
+              {incomingOrders.map((id) => (
+                <RiderOrderRequest
+                  key={id}
+                  orderId={id}
+                  onAccepted={() => {
+                    fetchProfile();
+                    fetchCurrentOrder();
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {currentOrder && (
+            <div className="mx-auto max-w-md px-4 space-y-4">
+              <RiderCurrentOrder
+                order={currentOrder}
+                onStatusUpdate={fetchCurrentOrder}
+              />
+              <RiderOrderMap order={currentOrder}/>
+            </div>
+          )}
+          
+          {profile.isAvailable && !currentOrder && incomingOrders.length === 0 && (
+             <div className="mx-auto max-w-md px-4">
+               <div className="flex flex-col items-center justify-center rounded-xl bg-white py-12 shadow-sm border border-gray-100 text-center">
+                 <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                   <div className="h-4 w-4 bg-blue-500 rounded-full animate-ping"></div>
+                 </div>
+                 <p className="font-medium text-gray-700">Looking for nearby orders...</p>
+                 <p className="text-sm text-gray-400 mt-1">Keep the app open to receive alerts</p>
+               </div>
+             </div>
+          )}
+        </div>
+      ) : (
+        <RiderEarnings profile={profile} />
+      )}
+
+      {/* Edit Profile Modal */}
+      {user && profile && (
+        <RiderEditProfile
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={fetchProfile}
+          currentName={user.name}
+          currentPhone={profile.phoneNumber}
+        />
+      )}
+    </div>
+  );
 };
 
 export default RiderDashboard;

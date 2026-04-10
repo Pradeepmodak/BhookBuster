@@ -5,27 +5,35 @@ import { verifyRazorpaySignature } from "../config/verifyRazorpay.js";
 import { publishPaymentSuccess } from "../config/payment.producer.js";
 
 export const createRazorpayOrder = async (req: Request, res: Response) => {
-    const { orderId } = req.body;
-    // calling another microservice
-    const { data } = await axios.get(
-        `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
-        {
-            // to get only trusted users // api key approach
-            headers: {
-                "x-internal-key": process.env.INTERNAL_SERVICE_KEY
+    try {
+        const { orderId } = req.body;
+        // calling another microservice
+        const { data } = await axios.get(
+            `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
+            {
+                // to get only trusted users // api key approach
+                headers: {
+                    "x-internal-key": process.env.INTERNAL_SERVICE_KEY
+                }
             }
-        }
-    );
+        );
 
-    const razorpayOrder = await razorpay.orders.create({
-        amount: data.amount * 100,
-        currency: "INR",
-        receipt: orderId,
-    });
-    res.json({
-        razorpayOrderId: razorpayOrder.id,
-        key: process.env.RAZORPAY_KEY_ID
-    });
+        const razorpayOrder = await razorpay.orders.create({
+            amount: data.amount * 100,
+            currency: "INR",
+            receipt: orderId,
+        });
+        res.json({
+            razorpayOrderId: razorpayOrder.id,
+            key: process.env.RAZORPAY_KEY_ID
+        });
+    } catch (error: any) {
+        console.error("Razorpay order creation error:", error.response?.data || error.message);
+        res.status(500).json({
+            message: "Failed to create Razorpay order",
+            error: error.response?.data?.message || error.message
+        });
+    }
 }
 
 export const verifyRazorpayPayment = async (req: Request, res: Response) => {
@@ -88,7 +96,7 @@ export const payWithStripe = async (req: Request, res: Response) => {
   metadata:{
     orderId,
   },
-success_url: `${process.env.FRONTEND_URL}/ordersuccess?session_id={CHECKOUT_SESSION_ID}`,
+success_url: `${process.env.FRONTEND_URL}/ordersuccess/{CHECKOUT_SESSION_ID}`,
 cancel_url: `${process.env.FRONTEND_URL}/checkout`,
 });
 res.json({

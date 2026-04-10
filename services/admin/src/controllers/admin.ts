@@ -16,7 +16,7 @@ res.json({
 })
 });
 export const getPendingRiders = TryCatch(async (req, res) => {
-  const riders = await (await getRestaurantCollection()).find(
+  const riders = await (await getRiderCollection()).find(
     { isVerified: false }
   ).toArray();
 
