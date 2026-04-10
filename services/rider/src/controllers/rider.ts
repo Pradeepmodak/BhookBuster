@@ -36,7 +36,7 @@ if (!fileBuffer?.content) {
 }
 
 const { data: uploadResult } = await axios.post(
-  `${process.env.UTILS_SERVICE}/api/upload`,
+  `${process.env.UTILS_SERVICE_URL}/api/upload`,
   {
     buffer:fileBuffer.content,
 
@@ -189,7 +189,7 @@ export const acceptOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
       orderId,
       riderId: rider._id.toString(),
       riderUserId: rider.userId,
-      riderName: rider.picture,
+      riderName: req.user?.name || "Rider",
       riderPhone: rider.phoneNumber,
     },
     {
@@ -226,28 +226,74 @@ export const fetchMyCurrentOrder = TryCatch(async (req: AuthenticatedRequest, re
     });
   }
 
-  const rider = await Rider.findOne({ userId: riderUserId, isAvailable: true });
+  const rider = await Rider.findOne({ userId: riderUserId });
 
   if (!rider) {
-    return res.status(404).json({ message: "rider not found" });
+    // No rider profile yet — return null order instead of error
+    return res.json({ order: null });
   }
-try {
-  const { data } = await axios.get(
-    `${process.env.RESTAURANT_SERVICE}/api/order/current/rider?riderId=${rider._id}`,
-    {
-      headers: {
-        "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
-      },
+
+  try {
+    const { data } = await axios.get(
+      `${process.env.RESTAURANT_SERVICE}/api/order/current/rider?riderId=${rider._id}`,
+      {
+        headers: {
+          "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+        },
+      }
+    );
+    res.json({ order: data });
+  } catch (error: any) {
+    // 404 means no active order — this is normal, not an error
+    if (error.response?.status === 404) {
+      return res.json({ order: null });
     }
-  );
-  res.json({
-    order:data,
-  })
-} catch (error:any) {
     res.status(500).json({
-      message:error.response.data.message,
-    })
-}
+      message: error.response?.data?.message || "Failed to fetch current order",
+    });
+  }
+});
+
+// Import User at top level conceptually, but I can dynamically require it or just import at top. Let's do it right.
+import User from "../models/User.js";
+
+export const updateRiderProfile = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const user = req.user;
+  if (!user || user.role !== "rider") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const { name, phoneNumber } = req.body;
+  const file = req.file;
+
+  const rider = await Rider.findOne({ userId: user._id });
+  if (!rider) return res.status(404).json({ message: "Rider profile not found" });
+
+  if (name) {
+    await User.findByIdAndUpdate(user._id, { name });
+  }
+
+  if (phoneNumber) {
+    rider.phoneNumber = phoneNumber;
+  }
+
+  if (file) {
+    const fileBuffer = getBuffer(file);
+    if (!fileBuffer?.content) {
+      return res.status(500).json({ message: "Failed to process image format" });
+    }
+    
+    // Upload image to utils microservice
+    const { data: uploadResult } = await axios.post(
+      `${process.env.UTILS_SERVICE_URL}/api/upload`,
+      { buffer: fileBuffer.content }
+    );
+    rider.picture = uploadResult.url;
+  }
+
+  await rider.save();
+
+  res.json({ message: "Profile updated successfully!" });
 });
 
 export const updateOrderStatus = TryCatch(

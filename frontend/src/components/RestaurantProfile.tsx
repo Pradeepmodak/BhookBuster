@@ -91,13 +91,63 @@ const logoutHandler = async () => {
       className="mx-auto max-w-xl rounded-xl bg-white shadow-sm
     overflow-hidden"
     >
-      {restaurant.image && (
-        <img
-          src={restaurant.image}
-          alt={restaurant.name}
-          className="h-48 w-full object-cover"
-        />
-      )}
+      <div className="relative group">
+        {restaurant.image && (
+          <img
+            src={restaurant.image}
+            alt={restaurant.name}
+            className="h-48 w-full object-cover transition duration-300"
+          />
+        )}
+        
+        {/* Banner Edit Overlay */}
+        {isSeller && (
+          <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+            <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 font-semibold text-gray-800 shadow backdrop-blur-sm hover:bg-white text-sm">
+              {loading ? (
+                <span>Uploading...</span>
+              ) : (
+                <>
+                  <BiEdit className="h-5 w-5 text-gray-700" />
+                  <span>Update Banner Image</span>
+                </>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={loading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                
+                try {
+                  setLoading(true);
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  
+                  const { data } = await axios.put(
+                    `${restaurantService}/api/restaurant/image/update`,
+                    formData,
+                    {
+                      headers: {
+                         Authorization: `Bearer ${localStorage.getItem("token")}`
+                      }
+                    }
+                  );
+                  onUpdate(data.restaurant);
+                  toast.success("Banner updated!");
+                } catch (error: any) {
+                  toast.error(error.response?.data?.message || "Failed to update banner");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
+          </label>
+        )}
+      </div>
       <div className="p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>

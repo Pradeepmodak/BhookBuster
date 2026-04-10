@@ -8,6 +8,9 @@ import toast from "react-hot-toast";
 import { BiCreditCard, BiLoader } from "react-icons/bi";
 import { loadStripe } from "@stripe/stripe-js";
 
+// Initialize Stripe once at module level (not inside the component)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
 interface Address {
   _id: string;
   formattedAddress: string;
@@ -43,7 +46,7 @@ const Checkout = () => {
             },
           },
         );
-        setAddresses(data || []);
+        setAddresses(data.addresses || []);
       } catch (error) {
         console.log(error);
       } finally {
@@ -96,28 +99,38 @@ const Checkout = () => {
     try {
       setloadingRazorpay(true);
 
+      // 1. Ensure Razorpay script is loaded
+      if (!(window as any).Razorpay) {
+        console.error("Razorpay SDK not found. Check your index.html script tag.");
+        toast.error("Payment system not ready. Please refresh.");
+        return;
+      }
+
+      // 2. Create internal order
       const order = await createOrder("razorpay");
-      if (!order) return;
+      if (!order) {
+        console.error("Order creation failed on backend.");
+        return;
+      }
 
       const { orderId, amount } = order;
 
-      // order id aur key id mila razorpay se
+      // 3. Create Razorpay order via Utils service
+      console.log("Creating Razorpay session...");
       const { data } = await axios.post(`${utilsService}/api/payment/create`, {
         orderId,
       });
       const { razorpayOrderId, key } = data;
+
       const options = {
         key,
         amount: amount * 100,
         currency: "INR",
-        name: "BhookBuster", // your business name
+        name: "BhookBuster",
         description: "Food Order Payment",
         order_id: razorpayOrderId,
-        // the response obj received from after successful
-        // payment is sent to backend for signature
         handler: async (response: any) => {
           try {
-            // verifying the payment is valid or not
             await axios.post(`${utilsService}/api/payment/verify`, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -125,29 +138,34 @@ const Checkout = () => {
               orderId,
             });
 
-            toast.success("Payment successfull 🎉");
-                        // fetchCart();
-            // navigate to this page after payment
+            toast.success("Payment successful 🎉");
             navigate("/paymentsuccess/" + response.razorpay_payment_id);
           } catch (error) {
+            console.error("Payment verification failed:", error);
             toast.error("Payment verification failed");
           }
         },
         theme: {
           color: "#E23744",
         },
+        modal: {
+          ondismiss: function() {
+            console.log("Razorpay modal closed by user.");
+            setloadingRazorpay(false);
+          }
+        }
       };
+
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
-    } catch (error) {
-      console.log(error);
-      toast.error("Payment Failes please refresh the page");
+    } catch (error: any) {
+      console.error("Razorpay initialization error:", error.response?.data || error.message);
+      toast.error("Payment failed to initialize. Please check console for details.");
     } finally {
       setloadingRazorpay(false);
     }
   };
-// “It loads Stripe in the browser using the publishable key so we can safely redirect users to checkout.”
-  const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
 
   const payWithStripe = async () => {
     try {

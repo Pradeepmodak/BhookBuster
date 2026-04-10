@@ -153,7 +153,8 @@ const order = await Order.create({
   expiresAt,
 });
 
-await Cart.deleteMany({userId:user._id});
+
+
 
 res.json({
     message:"Order created Successfully",
@@ -185,7 +186,7 @@ export const fetchOrderForPayment = TryCatch(async (req, res) => {
   res.json({
     orderId:order._id,
     amount:order.totalAmount,
-    curreny:"INR",
+    currency:"INR",
   }) 
 
 });
@@ -543,4 +544,73 @@ return res.json({
 return res.status(400).json({
   message: "Cannot update order with current status",
 });
+});
+export const getRiderEarningsAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const { riderId } = req.params;
+  if (!riderId) {
+    return res.status(400).json({ message: "Rider ID is required" });
+  }
+  if (!riderId) {
+    return res.status(400).json({ message: "Rider ID is required" });
+  }
+
+  const analytics = await Order.aggregate([
+    {
+      $match: {
+        riderId: riderId,
+        status: "delivered",
+        createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } // This year only
+      }
+    },
+    {
+      $facet: {
+        monthlyData: [
+          {
+            $group: {
+              _id: { $month: "$createdAt" },
+              earnings: { $sum: "$riderAmount" },
+              deliveries: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id": 1 } }
+        ],
+        overallTotals: [
+          {
+            $group: {
+              _id: null,
+              totalEarnings: { $sum: "$riderAmount" },
+              totalDeliveries: { $sum: 1 },
+              uniqueLocations: { $addToSet: "$deliveryAddress.formattedAddress" }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  if (!analytics || analytics.length === 0 || (!analytics[0].monthlyData.length && !analytics[0].overallTotals.length)) {
+    return res.json({ 
+      monthlyData: [], 
+      totalEarnings: 0, 
+      totalDeliveries: 0, 
+      uniqueLocationsCount: 0 
+    });
+  }
+
+  // Format array for Recharts
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formattedMonthly = analytics[0].monthlyData.map((data: any) => ({
+    name: monthNames[data._id - 1],
+    earnings: data.earnings,
+    deliveries: data.deliveries,
+  }));
+
+  const totals = analytics[0].overallTotals[0] || { totalEarnings: 0, totalDeliveries: 0, uniqueLocations: [] };
+  
+  res.json({
+    monthlyData: formattedMonthly,
+    totalEarnings: totals.totalEarnings,
+    totalDeliveries: totals.totalDeliveries,
+    uniqueLocationsCount: totals.uniqueLocations ? totals.uniqueLocations.length : 0,
+  });
 });

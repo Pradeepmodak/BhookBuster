@@ -53,6 +53,20 @@ if (user.restaurantId) {
 console.log(`User connected: ${userId}`);
 console.log("Socket room: ", [...socket.rooms]);
 
+socket.on("join-room", (room) => {
+  if (room) {
+    socket.join(room);
+    console.log(`User ${userId} joined room: ${room}`);
+  }
+});
+
+socket.on("leave-room", (room) => {
+  if (room) {
+    socket.leave(room);
+    console.log(`User ${userId} left room: ${room}`);
+  }
+});
+
 socket.on("disconnect", () => {
   console.log(`User disconnected: ${userId}`);
 });

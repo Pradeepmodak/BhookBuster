@@ -1,1 +1,3 @@
 @import "tailwindcss";
+/* Hide Leaflet Routing Instructions */
+.leaflet-routing-container { display: none !important; }

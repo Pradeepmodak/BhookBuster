@@ -25,7 +25,7 @@ export const startOrderReadyConsumer = async () => {
             }
             const { orderId, restaurantId, location } = event.data;
 
-            console.log("Searching for rider near:", location);
+            console.log("Searching for riders near:", JSON.stringify(location?.coordinates));
 
             const riders = await Rider.find({
                 isAvailable: true,
@@ -33,15 +33,15 @@ export const startOrderReadyConsumer = async () => {
                 location: {
                     $near: {
                         $geometry: location,
-                        $maxDistance: 500,
+                        $maxDistance: 5000, // 5km radius
                     },
                 },
-            },)
+            })
 
-            console.log(`Found ${riders.length} nearby riders`);
+            console.log(`Found ${riders.length} nearby verified & online riders`);
 
             if (riders.length === 0) {
-  console.log("No riders available nearby");
+  console.log("No riders available nearby — ensure riders are verified, online, and within 5km");
   channel.ack(msg!);
   return;
 }

@@ -1,6 +1,6 @@
 import express from "express";
 import { isAuth, isSeller } from "../middlewares/isAuth.js";
-import { assignRiderToOrder, createOrder, fetchOrderForPayment, fetchRestaurantOrders, fetchSingleOrder, getCurrentOrdersForRider, getMyOrders, updateOrderStatus, updateOrderStatusRider } from "../controllers/order.js";
+import { assignRiderToOrder, createOrder, fetchOrderForPayment, fetchRestaurantOrders, fetchSingleOrder, getCurrentOrdersForRider, getMyOrders, updateOrderStatus, updateOrderStatusRider, getRiderEarningsAnalytics } from "../controllers/order.js";
 
 const router = express.Router();
 
@@ -14,6 +14,8 @@ router.get("/:id", isAuth, fetchSingleOrder);
 router.put("/assign/rider", assignRiderToOrder);
 // View current order
 router.get("/current/rider", getCurrentOrdersForRider);
+// View earnings
+router.get("/analytics/rider/:riderId", isAuth, getRiderEarningsAnalytics);
 // Update delivery status
 router.put("/update/status/rider/:orderId", updateOrderStatusRider);
 export default router;

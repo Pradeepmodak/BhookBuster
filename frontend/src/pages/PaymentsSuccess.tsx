@@ -43,7 +43,7 @@ const PaymentSuccess = () => {
 
 <button
   className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#e23744] py-3 text-sm font-semibold text-white"
-  onClick={() => navigate("/order")}
+  onClick={() => navigate("/orders")}
 >
     Your Orders
   <BsArrowRight size={16} />

@@ -117,11 +117,11 @@ return () => clearInterval(interval);
 
 if (!riderLocation) return null;
   return (
-  <div className="rounded-xl bg-white shadow-sm p-3">
+  <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 p-2">
     <MapContainer
       center={riderLocation} // map centered towards riders loc
       zoom={14}  // medium zoom ,city level view
-      className="h-87.5 w-full rounded-lg"
+      className="h-[350px] w-full rounded-xl"
     > 
     {/* map ka background */}
       <TileLayer

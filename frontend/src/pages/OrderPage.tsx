@@ -144,17 +144,46 @@ if (!order) {
 
 <div className="flex justify-between text-sm">
   <span>Total</span>
-  <span>{order.totalAmount}</span>
+  <span>₹{order.totalAmount}</span>
 </div>
 <p className="text-xs text-gray-500">
-  Payment Method: {order.paymentMethod}
+  Payment Method: <span className="uppercase">{order.paymentMethod}</span>
 </p>
 
 <p className="text-xs text-gray-500">
-  Payment Status: {order.paymentStatus}
+  Payment Status: <span className="uppercase">{order.paymentStatus}</span>
 </p>
   </div>
 </div>
+
+{/* Rider Profile Contact Card */}
+{(order.status === "rider_assigned" || order.status === "picked_up" || order.status === "delivered") && order.riderName && (
+  <div className="rounded-xl bg-orange-50 border border-orange-100 p-4 shadow-sm flex items-center justify-between">
+    <div className="flex items-center gap-4">
+      {/* Rider Avatar Placeholder */}
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
+        <span className="text-xl">🛵</span>
+      </div>
+      <div>
+        <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">Your Delivery Partner</p>
+        <p className="text-lg font-bold text-gray-800">{order.riderName}</p>
+        <p className="text-sm text-gray-600 font-medium">Verified Rider</p>
+      </div>
+    </div>
+    
+    {order.riderPhone && (
+      <a
+        href={`tel:${order.riderPhone}`}
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-orange-600 shadow-md transition hover:bg-orange-600 hover:text-white"
+        title="Call Rider"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+        </svg>
+      </a>
+    )}
+  </div>
+)}
 {(order.status === "rider_assigned" || order.status === "picked_up") && (
   riderLocation ? (
     <UserOrderMap
