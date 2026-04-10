@@ -40,30 +40,30 @@ const AdminRiderCard = ({
   };
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow space-y-2">
+    <div className="space-y-3 rounded-[24px] border border-white/10 bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
       <img
         src={rider.picture}
-        className="h-40 w-full object-cover rounded"
+        className="h-40 w-full rounded-2xl object-cover"
         alt=""
       />
       <div className="flex items-center gap-2 flex-wrap">
-        <h3 className="font-semibold">Rider ID: {rider._id}</h3>
+        <h3 className="font-semibold text-white">Rider ID: {rider._id}</h3>
         <VerificationBadge isVerified={rider.isVerified} size={14} />
       </div>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-neutral-400">
         Phone: {rider.phoneNumber}
       </p>
-<p className="text-sm text-gray-500">
+<p className="text-sm text-neutral-400">
   Aadhar:{rider.aadharNumber}
 </p>
-      <p className="text-sm">
+      <p className="text-sm text-neutral-300">
         DL: {rider.drivingLicenseNumber}
       </p>
       
 
       <button
-        className="w-full rounded bg-green-500 py-2 text-white hover:bg-green-600"
+        className="w-full rounded-2xl bg-[#facc15] py-2.5 font-semibold text-[#0f0f0f] transition hover:brightness-110"
         onClick={verify}
       >
         Verify Rider

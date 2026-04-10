@@ -88,8 +88,7 @@ const logoutHandler = async () => {
 };
   return (
     <div
-      className="mx-auto max-w-xl rounded-xl bg-white shadow-sm
-    overflow-hidden"
+      className="mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-white/10 bg-[#121212] shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
     >
       <div className="relative group">
         {restaurant.image && (
@@ -103,7 +102,7 @@ const logoutHandler = async () => {
         {/* Banner Edit Overlay */}
         {isSeller && (
           <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
-            <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 font-semibold text-gray-800 shadow backdrop-blur-sm hover:bg-white text-sm">
+              <div className="flex items-center gap-2 rounded-full bg-[#facc15] px-4 py-2 text-sm font-semibold text-[#0f0f0f] shadow backdrop-blur-sm hover:brightness-110">
               {loading ? (
                 <span>Uploading...</span>
               ) : (
@@ -148,7 +147,7 @@ const logoutHandler = async () => {
           </label>
         )}
       </div>
-      <div className="p-5 space-y-4">
+      <div className="space-y-4 p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
             {editMode ? (
@@ -166,8 +165,8 @@ const logoutHandler = async () => {
                 )}
               </div>
             )}
-            <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-              <BiMapPin className="h-4 w-4 text-red-500" />
+            <div className="mt-1 flex items-center gap-2 text-sm text-neutral-400">
+              <BiMapPin className="h-4 w-4 text-[#facc15]" />
               {restaurant.autoLocation.formattedAddress ||
                 "Location unavailable"}
             </div>
@@ -176,7 +175,7 @@ const logoutHandler = async () => {
           {isSeller && (
             <button
               onClick={() => setEditMode(!editMode)}
-              className="text-gray-500 hover:text-black"
+              className="text-neutral-400 hover:text-white"
             >
               <BiEdit size={18} />
             </button>
@@ -187,10 +186,10 @@ const logoutHandler = async () => {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded border px-3 py-2 text-sm"
+            className="w-full rounded-2xl border border-white/10 bg-[#171717] px-3 py-2 text-sm text-white"
           />
         ) : (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-300">
             {restaurant.description || "No description added"}
           </p>
         )}
@@ -210,7 +209,7 @@ const logoutHandler = async () => {
               <button
                 onClick={saveChanges}
                 disabled={loading}
-                className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                className="flex items-center gap-1 rounded-2xl bg-[#facc15] px-3 py-1.5 text-sm font-semibold text-[#0f0f0f] hover:brightness-110"
               >
                 <BiSave size={16} />
                 Save
@@ -222,7 +221,7 @@ const logoutHandler = async () => {
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white ${
                   isOpen
                     ? "bg-red-600 hover:bg-red-700"
-                    : "bg-green-600 hover:bg-green-700"
+                    : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
               >
                 {isOpen ? "Close Restaurant" : "Open Restaurant"}
@@ -231,14 +230,14 @@ const logoutHandler = async () => {
                         {isSeller && (
               <button
                 onClick={logoutHandler}
-                className="rounded-lg px-4 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700" >
+                className="rounded-2xl bg-transparent px-4 py-1.5 text-sm font-medium text-neutral-300 border border-white/10 hover:border-red-400/40 hover:text-red-300" >
                Logout
               </button>
             )}
           </div>
         </div>
 
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-neutral-500">
           Created on {new Date(restaurant.createdAt).toLocaleDateString()}
         </p>
       </div>

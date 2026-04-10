@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import PublicRoute from "./components/publicRoute";
@@ -18,62 +18,83 @@ import Orders from "./pages/Orders";
 import OrderPage from "./pages/OrderPage";
 import RiderDashboard from "./pages/RiderDashboard";
 import Admin from "./pages/Admin";
-import RoleHeader from "./components/RoleHeader";
+
+const AppRoutes = () => {
+  const { user } = useAppData();
+  const location = useLocation();
+  const showCustomerNavbar = !user || user.role === "customer";
+  const isDashboardRoute = ["/admin", "/restaurant", "/rider"].includes(location.pathname);
+
+  return (
+    <>
+      {showCustomerNavbar && <Navbar />}
+      <div className={`min-h-screen ${isDashboardRoute ? "bg-[#0f0f0f]" : "bg-[#0f0f0f]"}`}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<Login />} />
+          </Route>
+
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/"
+              element={
+                user?.role === "admin" ? (
+                  <Navigate to="/admin" replace />
+                ) : user?.role === "seller" ? (
+                  <Navigate to="/restaurant" replace />
+                ) : user?.role === "rider" ? (
+                  <Navigate to="/rider" replace />
+                ) : (
+                  <Home />
+                )
+              }
+            />
+            <Route path="/paymentsuccess/:paymentId" element={<PaymentSuccess />} />
+            <Route path="/ordersuccess/:sessionId" element={<OrderSuccess />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/order/:id" element={<OrderPage />} />
+            <Route path="/address" element={<Address />} />
+            <Route path="/restaurant/:id" element={<RestaurantPage />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/select-role" element={<SelectRole />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/account" element={<Account />} />
+            <Route
+              path="/restaurant"
+              element={user?.role === "seller" ? <Restaurant /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/rider"
+              element={user?.role === "rider" ? <RiderDashboard /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/admin"
+              element={user?.role === "admin" ? <Admin /> : <Navigate to="/" replace />}
+            />
+          </Route>
+        </Routes>
+      </div>
+    </>
+  );
+};
 
 const App = () => {
-  const { user, loading } = useAppData();
+  const { loading } = useAppData();
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-gray-300 border-t-[#E23774] rounded-full animate-spin mx-auto" />
-          <p className="text-gray-500 text-sm">Loading BhookBuster...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f]">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#3b3b3b] border-t-[#facc15]" />
+          <p className="text-sm text-gray-500">Loading BhookBuster...</p>
         </div>
       </div>
     );
   }
 
-  // Determine if the user has a non-customer role
-  const isNonCustomerRole = user && (user.role === "seller" || user.role === "rider" || user.role === "admin");
-
   return (
     <BrowserRouter>
-      {/* Show customer Navbar ONLY for customers (or unauthenticated users) */}
-      {!isNonCustomerRole && <Navbar />}
-
-      {/* Show a minimal role-specific header for sellers, riders, and admins */}
-      {isNonCustomerRole && <RoleHeader />}
-
-      <div className="min-h-screen bg-gray-50">
-        {user && user.role === "seller" ? (
-          <Restaurant />
-        ) : user && user.role === "rider" ? (
-          <RiderDashboard />
-        ) : user && user.role === "admin" ? (
-          <Admin />
-        ) : (
-          <Routes>
-            <Route element={<PublicRoute />}>
-              <Route path="/login" element={<Login />} />
-            </Route>
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/paymentsuccess/:paymentId" element={<PaymentSuccess />} />
-              <Route path="/ordersuccess/:sessionId" element={<OrderSuccess />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/order/:id" element={<OrderPage />} />
-              <Route path="/address" element={<Address />} />
-              <Route path="/restaurant/:id" element={<RestaurantPage />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/select-role" element={<SelectRole />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/restaurant" element={<Restaurant />} />
-            </Route>
-          </Routes>
-        )}
-      </div>
+      <AppRoutes />
     </BrowserRouter>
   );
 };

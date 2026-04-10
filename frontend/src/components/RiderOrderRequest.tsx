@@ -47,21 +47,21 @@ onAccepted();
 }
 };
   return (
-  <div className="rounded-xl bg-white p-4 shadow-sm border border-green-300 space-y-3">
-    <p className="text-center text-xs font-semibold text-red-600">
+  <div className="space-y-3 rounded-[24px] border border-[#facc15]/20 bg-[#121212] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+    <p className="text-center text-xs font-semibold text-[#facc15]">
       Accept within {secondsLeft}
     </p>
-        <p className="text-center text-xs font-semibold text-green-600">
+        <p className="text-center text-xs font-semibold text-emerald-300">
      New Delivery Request
     </p>
-    <p className="text-xs text-gray-600">
+    <p className="text-xs text-neutral-300">
   Order ID: <b>{orderId.slice(-6)}</b>
 </p>
 
 <button
   disabled={accepting}
   onClick={acceptOrder}
-  className="w-full rounded-lg bg-green-600 py-2 text-sm font-semibold text-white hover:bg-green-700
+  className="w-full rounded-2xl bg-[#facc15] py-2 text-sm font-semibold text-[#0f0f0f] hover:brightness-110
    disabled:opacity-50"
 >
   {accepting ? "Accepting..." : "Accept Order"}

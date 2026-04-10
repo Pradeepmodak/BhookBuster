@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAppData } from "../context/AppContext";
 import axios from "axios";
 import { restaurantService, utilsService } from "../main";
 import type { ICart, IMenuItem, IRestaurant } from "../types";
@@ -7,8 +6,8 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { BiCreditCard, BiLoader } from "react-icons/bi";
 import { loadStripe } from "@stripe/stripe-js";
+import { useAppData } from "../context/AppContext";
 
-// Initialize Stripe once at module level (not inside the component)
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface Address {
@@ -17,16 +16,16 @@ interface Address {
   mobile: number;
 }
 
+const formatCurrency = (value: number) => `Rs ${value}`;
+
 const Checkout = () => {
   const { cart, subtotal, quantity } = useAppData();
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setselectedAddressId] = useState<string | null>(
-    null,
-  );
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddress, setLoadingAddress] = useState(true);
   const [creatingOrder, setCreatingOrder] = useState(false);
-  const [loadingRazorpay, setloadingRazorpay] = useState(false);
-  const [loadingStripe, setloadingStripe] = useState(false);
+  const [loadingRazorpay, setLoadingRazorpay] = useState(false);
+  const [loadingStripe, setLoadingStripe] = useState(false);
 
   const navigate = useNavigate();
 
@@ -38,14 +37,11 @@ const Checkout = () => {
       }
 
       try {
-        const { data } = await axios.get(
-          `${restaurantService}/api/address/all`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+        const { data } = await axios.get(`${restaurantService}/api/address/all`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        );
+        });
         setAddresses(data.addresses || []);
       } catch (error) {
         console.log(error);
@@ -59,8 +55,8 @@ const Checkout = () => {
 
   if (!cart || cart.length === 0) {
     return (
-      <div className="flex min-h-[60vh] item-center justify-center">
-        <p className="text-gray-500 text-lg">Your cart is empty</p>
+      <div className="flex min-h-[60vh] items-center justify-center bg-[#0f0f0f]">
+        <p className="text-lg text-neutral-400">Your cart is empty</p>
       </div>
     );
   }
@@ -68,8 +64,7 @@ const Checkout = () => {
   const restaurant = cart[0].restaurantId as IRestaurant;
   const deliveryFee = subtotal < 250 ? 49 : 0;
   const platformFee = 7;
-
-  const gradTotal = subtotal + deliveryFee + platformFee;
+  const grandTotal = subtotal + deliveryFee + platformFee;
 
   const createOrder = async (paymentMethod: "razorpay" | "stripe") => {
     setCreatingOrder(true);
@@ -87,39 +82,28 @@ const Checkout = () => {
         },
       );
       return data;
-    } catch (error) {
-      toast.error("Fails to create Order");
+    } catch (_error) {
+      toast.error("Failed to create order");
+      return null;
     } finally {
       setCreatingOrder(false);
     }
   };
 
-  // payment popup configuration
   const payWithRazorpay = async () => {
     try {
-      setloadingRazorpay(true);
+      setLoadingRazorpay(true);
 
-      // 1. Ensure Razorpay script is loaded
-      if (!(window as any).Razorpay) {
-        console.error("Razorpay SDK not found. Check your index.html script tag.");
+      if (!(window as Window & { Razorpay?: unknown }).Razorpay) {
         toast.error("Payment system not ready. Please refresh.");
         return;
       }
 
-      // 2. Create internal order
       const order = await createOrder("razorpay");
-      if (!order) {
-        console.error("Order creation failed on backend.");
-        return;
-      }
+      if (!order) return;
 
       const { orderId, amount } = order;
-
-      // 3. Create Razorpay order via Utils service
-      console.log("Creating Razorpay session...");
-      const { data } = await axios.post(`${utilsService}/api/payment/create`, {
-        orderId,
-      });
+      const { data } = await axios.post(`${utilsService}/api/payment/create`, { orderId });
       const { razorpayOrderId, key } = data;
 
       const options = {
@@ -129,7 +113,11 @@ const Checkout = () => {
         name: "BhookBuster",
         description: "Food Order Payment",
         order_id: razorpayOrderId,
-        handler: async (response: any) => {
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
           try {
             await axios.post(`${utilsService}/api/payment/verify`, {
               razorpay_order_id: response.razorpay_order_id,
@@ -138,175 +126,154 @@ const Checkout = () => {
               orderId,
             });
 
-            toast.success("Payment successful 🎉");
-            navigate("/paymentsuccess/" + response.razorpay_payment_id);
-          } catch (error) {
-            console.error("Payment verification failed:", error);
+            toast.success("Payment successful");
+            navigate(`/paymentsuccess/${response.razorpay_payment_id}`);
+          } catch (_error) {
             toast.error("Payment verification failed");
           }
         },
         theme: {
-          color: "#E23744",
+          color: "#facc15",
         },
-        modal: {
-          ondismiss: function() {
-            console.log("Razorpay modal closed by user.");
-            setloadingRazorpay(false);
-          }
-        }
       };
 
-      const razorpay = new (window as any).Razorpay(options);
+      const RazorpayConstructor = ((window as unknown) as Window & {
+        Razorpay: new (options: unknown) => { open: () => void };
+      }).Razorpay;
+      const razorpay = new RazorpayConstructor(options);
       razorpay.open();
-    } catch (error: any) {
-      console.error("Razorpay initialization error:", error.response?.data || error.message);
-      toast.error("Payment failed to initialize. Please check console for details.");
+    } catch (_error) {
+      toast.error("Payment failed to initialize");
     } finally {
-      setloadingRazorpay(false);
+      setLoadingRazorpay(false);
     }
   };
-
 
   const payWithStripe = async () => {
     try {
-      setloadingStripe(true);
+      setLoadingStripe(true);
       const order = await createOrder("stripe");
       if (!order) return;
-     
-      const {orderId}=order;
 
-      try {
-        await stripePromise;
-        const {data}=await axios.post(`${utilsService}/api/payment/stripe/create`,{
-          orderId,
-        });
-        if(data.url){
-          window.location.href=data.url;
-        }else{
-          toast.error("Failed to initiate Stripe payment");
-        }
-      } catch (error) {
-        toast.error("Payment Failed");
+      const { orderId } = order;
+      await stripePromise;
+      const { data } = await axios.post(`${utilsService}/api/payment/stripe/create`, { orderId });
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Failed to initiate Stripe payment");
       }
-    } catch (error) {
-      console.log(error);
+    } catch (_error) {
       toast.error("Payment failed");
     } finally {
-      setloadingStripe(false);
+      setLoadingStripe(false);
     }
   };
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold">Checkout</h1>
+    <div className="mx-auto max-w-6xl px-4 py-8 text-white">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <h1 className="text-3xl font-semibold">Checkout</h1>
+            <p className="mt-3 text-sm text-neutral-400">{restaurant.name} • {restaurant.autoLocation.formattedAddress}</p>
+          </div>
 
-      <div className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">{restaurant.name}</h2>
-        <p className="text-sm text-gray-500">
-          {restaurant.autoLocation.formattedAddress}
-        </p>
-      </div>
-      <div className="rounded-xl bg-white p-4 shadow-sm space-y-3">
-        <h3 className="font-semibold">Delivery Address</h3>
+          <div className="rounded-[30px] border border-white/10 bg-[#171717] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <h2 className="text-xl font-semibold">Delivery address</h2>
+            <div className="mt-5 space-y-3">
+              {loadingAddress ? (
+                <p className="text-sm text-neutral-400">Loading addresses...</p>
+              ) : addresses.length === 0 ? (
+                <p className="text-sm text-neutral-400">No address found. Please add one first.</p>
+              ) : (
+                addresses.map((address) => (
+                  <label
+                    key={address._id}
+                    className={`flex cursor-pointer gap-3 rounded-2xl border p-4 transition ${
+                      selectedAddressId === address._id
+                        ? "border-[#facc15] bg-[#facc15]/10"
+                        : "border-white/10 bg-black/20 hover:border-white/20"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      checked={selectedAddressId === address._id}
+                      onChange={() => setSelectedAddressId(address._id)}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{address.formattedAddress}</p>
+                      <p className="text-xs text-neutral-400">{address.mobile}</p>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
 
-        {loadingAddress ? (
-          <p className="text-sm text-gray-500">Loading addresses...</p>
-        ) : addresses.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No address found. Please add one
-          </p>
-        ) : (
-          addresses.map((add) => (
-            <label
-              key={add._id}
-              className={`flex gap-3 rounded-lg border p-3 cursor-pointer transition ${
-                selectedAddressId === add._id
-                  ? "border-[#e23744] bg-red-50"
-                  : "hover:bg-gray-50"
-              }`}
-            >
-              <input
-                type="radio"
-                checked={selectedAddressId === add._id}
-                onChange={() => setselectedAddressId(add._id)}
-              />
+        <div className="space-y-6">
+          <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <h2 className="text-xl font-semibold">Order summary</h2>
 
-              <div>
-                <p className="text-sm font-medium">{add.formattedAddress}</p>
-                <p className="text-xs text-gray-500">{add.mobile}</p>
+            <div className="mt-5 space-y-3">
+              {cart.map((cartItem: ICart) => {
+                const item = cartItem.itemId as IMenuItem;
+                return (
+                  <div className="flex justify-between text-sm" key={cartItem._id}>
+                    <span>
+                      {item.name} x {cartItem.quantity}
+                    </span>
+                    <span>{formatCurrency(item.price * cartItem.quantity)}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Items ({quantity})</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
-            </label>
-          ))
-        )}
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Delivery fee</span>
+                <span>{deliveryFee === 0 ? "Free" : formatCurrency(deliveryFee)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Platform fee</span>
+                <span>{formatCurrency(platformFee)}</span>
+              </div>
+              <div className="flex justify-between border-t border-white/10 pt-4 text-base font-semibold">
+                <span>Grand total</span>
+                <span>{formatCurrency(grandTotal)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-white/10 bg-[#171717] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <h2 className="text-xl font-semibold">Payment methods</h2>
+            <div className="mt-5 grid gap-3">
+              <button
+                disabled={!selectedAddressId || loadingRazorpay || creatingOrder}
+                onClick={payWithRazorpay}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#facc15] py-3 text-sm font-semibold text-[#0f0f0f] transition hover:brightness-110 disabled:opacity-50"
+              >
+                {loadingRazorpay ? <BiLoader size={18} className="animate-spin" /> : <BiCreditCard size={18} />}
+                Pay with Razorpay
+              </button>
+
+              <button
+                disabled={!selectedAddressId || loadingStripe || creatingOrder}
+                onClick={payWithStripe}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 py-3 text-sm font-semibold text-white transition hover:border-[#facc15]/40 disabled:opacity-50"
+              >
+                {loadingStripe ? <BiLoader size={18} className="animate-spin" /> : <BiCreditCard size={18} />}
+                Pay with Stripe
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="rounded-xl bg-white p-4 shadow-sm space-y-4">
-  <h3 className="font-semibold">Order Summary</h3>
-
-  {cart.map((cartItem: ICart) => {
-    const item = cartItem.itemId as IMenuItem;
-
-    return (
-      <div className="flex justify-between text-sm" key={cartItem._id}>
-        <span>
-          {item.name} x {cartItem.quantity}
-        </span>
-        <span>₹{item.price*cartItem.quantity}</span>
-      </div>
-    );
-  })}
-  <hr/>
-<div className="flex justify-between text-sm">
-  <span>Items ({quantity})</span>
-  <span>₹{subtotal}</span>
-</div>
-
-<div className="flex justify-between text-sm">
-  <span>Delivery Fee</span>
-  <span>{deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}</span>
-</div>
-
-<div className="flex justify-between text-sm">
-  <span>PlatForm Fee</span>
-  <span>₹{platformFee}</span>
-</div>
-{subtotal < 250 && (
-  <p className="text-xs text-gray-500">
-    Add Item worth ₹{250 - subtotal} more to get Free delivery
-  </p>
-)}
-
-<div className="flex justify-between text-base font-semibold border-t pt-2">
-  <span>Grand Total</span>
-  <span>₹{gradTotal}</span>
-</div>
-</div>
-<div className="rounded-xl bg-white p-4 shadow-sm space-y-3">
-  <h3 className="font-semibold">Payment Method</h3>
-
-  <button
-    disabled={!selectedAddressId || loadingRazorpay || creatingOrder}
-    onClick={payWithRazorpay}
-    className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#2D7DF9] py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-  >
-    {loadingRazorpay ? (
-      <BiLoader size={18} className="animate-spin" />
-    ) : (
-      <BiCreditCard size={18} />
-    )}
-    Pay With Razorpay
-  </button>
-    <button
-    disabled={!selectedAddressId || loadingRazorpay || creatingOrder}
-    onClick={payWithStripe}
-    className="flex w-full items-center justify-center gap-2 rounded-lg bg-black py-3 text-sm font-semibold text-white hover:bg-gray-500 disabled:opacity-50"
-  >
-    {loadingStripe ? (
-      <BiLoader size={18} className="animate-spin" />
-    ) : (
-      <BiCreditCard size={18} />
-    )}
-    Pay With Stripe
-  </button>
-</div>
     </div>
   );
 };

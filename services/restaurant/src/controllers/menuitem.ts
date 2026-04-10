@@ -5,6 +5,8 @@ import getBuffer from "../config/datauri.js";
 import axios from "axios";
 import uploadFile from "../middlewares/multer.js";
 import MenuItems from "../models/MenuItems.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { fetchRestaurantMenuItems } from "../services/catalog.js";
 
 
 export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -64,12 +66,10 @@ res.status(201).json({
 
 export const getAllItems = TryCatch(async (req: AuthenticatedRequest, res) => {
     const { id } = req.params;
-    if (!id) {
-        return res.status(400).json({
-            message: "Id is required",
-        });
+    if (typeof id !== "string" || !id) {
+        throw new AppError("Restaurant id is required", 400);
     }
-    const items = await MenuItems.find({ restaurantId: id });
+    const items = await fetchRestaurantMenuItems(id);
     res.status(200).json(items);
 });
 

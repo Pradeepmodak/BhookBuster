@@ -5,6 +5,7 @@ import cors from 'cors';
 import cloudinaryRoutes from './routes/cloudinary.js';
 import paymentRoutes from './routes/payments.js';
 import { connectRabbitMQ } from './config/rabbitmq.js';
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 dotenv.config();
 connectRabbitMQ();
 const app = express();
@@ -26,6 +27,8 @@ cloudinary.v2.config({
 
 app.use('/api', cloudinaryRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use(notFoundHandler);
+app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Utils service is running on port ${PORT}`);
 });

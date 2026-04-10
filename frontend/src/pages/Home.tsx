@@ -1,21 +1,27 @@
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../context/AppContext";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { IRestaurant } from "../types";
 import axios from "axios";
 import { restaurantService } from "../main";
 import RestaurantCard from "../components/RestaurantCard";
+import { motion } from "framer-motion";
+import { FiFilter, FiMapPin, FiSearch, FiStar, FiTrendingUp, FiZap } from "react-icons/fi";
+
+type RestaurantWithDistance = IRestaurant & {
+  distanceKm?: number;
+};
 
 const Home = () => {
   const { location, fetchLocation, loadingLocation, city } = useAppData();
   const [searchParams] = useSearchParams();
-
   const search = searchParams.get("search") || "";
 
-  const [restaurants, setRestaurants] = useState<IRestaurant[]>([]);
+  const [restaurants, setRestaurants] = useState<RestaurantWithDistance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOpenOnly, setShowOpenOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"smart" | "distance" | "name">("smart");
 
-  // Haversine Formula to calculate distance
   const getDistanceKm = ({
     lat1,
     lon1,
@@ -33,9 +39,10 @@ const Home = () => {
 
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *  // ✅ fixed: lat1 instead of lat2
-      Math.cos((lat2 * Math.PI) / 180) *  // ✅ added missing cos(lat2)
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return +(R * c).toFixed(2);
@@ -46,21 +53,19 @@ const Home = () => {
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
-      const { data } = await axios.get(
-        `${restaurantService}/api/restaurant/all`,
-        {
-          params: {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            search,
-          },
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
+        params: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          search,
+        },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       setRestaurants(data.restaurants ?? []);
     } catch (error) {
       console.log(error);
@@ -73,12 +78,48 @@ const Home = () => {
     fetchRestaurants();
   }, [location, search]);
 
+  const visibleRestaurants = useMemo(() => {
+    const base = showOpenOnly ? restaurants.filter((restaurant) => restaurant.isOpen) : restaurants;
+
+    return [...base].sort((a, b) => {
+      const distanceA = Number(a.distanceKm ?? 0);
+      const distanceB = Number(b.distanceKm ?? 0);
+
+      if (sortBy === "distance") {
+        return distanceA - distanceB;
+      }
+
+      if (sortBy === "name") {
+        return a.name.localeCompare(b.name);
+      }
+
+      if (a.isOpen !== b.isOpen) {
+        return a.isOpen ? -1 : 1;
+      }
+
+      return distanceA - distanceB;
+    });
+  }, [restaurants, showOpenOnly, sortBy]);
+
+  const insights = useMemo(() => {
+    const openCount = restaurants.filter((restaurant) => restaurant.isOpen).length;
+    const nearest = [...restaurants].sort(
+      (a, b) => Number(a.distanceKm ?? 0) - Number(b.distanceKm ?? 0),
+    )[0];
+
+    return {
+      openCount,
+      nearestName: nearest?.name || "Discover nearby places",
+      nearestDistance: nearest ? `${nearest.distanceKm} km` : "No results yet",
+    };
+  }, [restaurants]);
+
   if (loadingLocation) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex h-[60vh] items-center justify-center bg-[#0f0f0f]">
         <div className="text-center">
-          <div className="mb-4 animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-          <p className="text-gray-500">Getting your location...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-[#facc15]" />
+          <p className="text-gray-400">Getting your location...</p>
         </div>
       </div>
     );
@@ -86,21 +127,21 @@ const Home = () => {
 
   if (!location) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
+      <div className="flex h-[60vh] items-center justify-center bg-[#0f0f0f]">
+        <div className="mx-auto max-w-md rounded-[28px] border border-white/10 bg-[#171717] p-6 text-center shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
           <div className="mb-4">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="mx-auto h-12 w-12 text-[#facc15]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Location Access Required</h3>
-          <p className="text-gray-500 mb-6">
+          <h3 className="mb-2 text-lg font-medium text-white">Location Access Required</h3>
+          <p className="mb-6 text-neutral-400">
             We need your location to show restaurants near you. Please allow location access to continue.
           </p>
           <button
             onClick={fetchLocation}
-            className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
+            className="w-full rounded-2xl bg-[#facc15] px-4 py-3 font-semibold text-[#0f0f0f] transition hover:brightness-110"
           >
             Allow Location Access
           </button>
@@ -111,27 +152,101 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <p className="text-gray-500">Finding restaurants near you...</p>
+      <div className="flex h-[60vh] items-center justify-center bg-[#0f0f0f]">
+        <p className="text-gray-400">Finding restaurants near you...</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Restaurants near you</h1>
-        <p className="text-gray-600 mt-1">{location.formattedAddress || city}</p>
+    <div className="mx-auto max-w-7xl px-4 py-6 text-white">
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[url('/premium-orbit.svg'),radial-gradient(circle_at_top_left,_rgba(250,204,21,0.18),_transparent_30%),linear-gradient(135deg,#171717,#101010)] bg-cover bg-center p-6 shadow-[0_22px_70px_rgba(0,0,0,0.35)]"
+      >
+        <div className="absolute -right-10 top-0 h-40 w-40 rounded-full bg-[#facc15]/10 blur-3xl" />
+        <div className="relative grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#facc15]/20 bg-[#facc15]/10 px-4 py-2 text-sm text-[#facc15]">
+              <FiZap />
+              Premium delivery discovery
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                Find the fastest, smartest food picks near you.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-300 md:text-base">
+                Explore verified restaurants, filter instantly, and move through your city like a premium delivery app.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-neutral-400">Current area</div>
+                <div className="mt-1 flex items-center gap-2 font-medium text-white">
+                  <FiMapPin className="text-[#facc15]" />
+                  <span>{location.formattedAddress || city}</span>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-neutral-400">Closest option</div>
+                <div className="mt-1 font-medium">{insights.nearestName}</div>
+                <div className="text-[#facc15]">{insights.nearestDistance}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            {[
+              { label: "Restaurants", value: restaurants.length, icon: FiSearch },
+              { label: "Open now", value: insights.openCount, icon: FiStar },
+              { label: "Discovery score", value: `${Math.min(98, 72 + insights.openCount * 3)}%`, icon: FiTrendingUp },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                <item.icon className="text-xl text-[#facc15]" />
+                <div className="mt-4 text-2xl font-semibold">{item.value}</div>
+                <div className="text-sm text-neutral-400">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto_auto]">
+        <div className="flex items-center gap-3 rounded-[24px] border border-white/10 bg-[#171717] px-4 py-4">
+          <FiFilter className="text-[#facc15]" />
+          <span className="text-sm text-neutral-300">Tighten the list to what matters right now.</span>
+        </div>
+        <button
+          onClick={() => setShowOpenOnly((value) => !value)}
+          className={`rounded-[24px] border px-5 py-4 text-sm font-medium transition ${showOpenOnly ? "border-[#facc15] bg-[#facc15] text-[#0f0f0f]" : "border-white/10 bg-[#171717] text-white hover:border-[#facc15]/40"}`}
+        >
+          {showOpenOnly ? "Showing open only" : "Filter open now"}
+        </button>
+        <select
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value as "smart" | "distance" | "name")}
+          className="rounded-[24px] border border-white/10 bg-[#171717] px-5 py-4 text-sm text-white outline-none"
+        >
+          <option value="smart">Smart sort</option>
+          <option value="distance">Nearest first</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </section>
+
+      <div className="mb-6 mt-8">
+        <h2 className="text-2xl font-semibold">Restaurants near you</h2>
+        <p className="mt-1 text-neutral-400">{visibleRestaurants.length} curated results for your delivery zone</p>
       </div>
-      
-      {restaurants.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {restaurants.map((res) => {
+
+      {visibleRestaurants.length > 0 ? (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {visibleRestaurants.map((res) => {
             const [resLng, resLat] = res.autoLocation.coordinates;
 
             const distance = getDistanceKm({
-              lat1: location.latitude!,  // ✅ fixed: proper key-value pairs
-              lon1: location.longitude!,
+              lat1: location.latitude,
+              lon1: location.longitude,
               lat2: resLat,
               lon2: resLng,
             });
@@ -144,12 +259,17 @@ const Home = () => {
                 image={res.image ?? ""}
                 distance={`${distance}`}
                 isOpen={res.isOpen}
+                description={res.description}
+                address={res.autoLocation?.formattedAddress}
+                isVerified={res.isVerified}
               />
             );
           })}
         </div>
       ) : (
-        <p className="text-center text-gray-500">No restaurant found</p>
+        <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+          No restaurant found
+        </div>
       )}
     </div>
   );
