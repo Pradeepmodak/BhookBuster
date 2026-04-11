@@ -50,6 +50,24 @@ export interface IRestaurant {
     createdAt:Date;
 }
 
+export type PendingRestaurant = IRestaurant;
+
+export interface PendingRider {
+  _id: string;
+  phoneNumber: string;
+  aadharNumber: string;
+  drivingLicenseNumber: string;
+  picture: string;
+  isVerified: boolean;
+  isAvailable: boolean;
+}
+
+export interface AddressRecord {
+  _id: string;
+  formattedAddress: string;
+  mobile: number;
+}
+
 export interface IMenuItem {
    _id:string
     restaurantId: string;
@@ -81,6 +99,9 @@ export interface IOrder {
   riderName?: string | null;
   distance?: number;
   riderAmount: number;
+  customerDeliveryFee?: number;
+  platformSubsidy?: number;
+  estimatedPlatformRevenue?: number;
 
 items: {
   itemId: string;
@@ -123,8 +144,14 @@ updatedAt: Date;
 
 export interface AdminStats {
   totalRevenue: number;
+  totalRiderPayout: number;
+  totalPlatformSubsidy: number;
+  netPlatformRevenue: number;
   ordersCount: number;
   usersCount: number;
+  totalCustomers: number;
+  totalRestaurants: number;
+  totalRiders: number;
   growthPercent: number;
   orderGrowthPercent: number;
   peakOrderTime: string;
@@ -146,4 +173,50 @@ export interface TopSellingItem {
   revenue: number;
   image?: string;
   description?: string;
+}
+
+export interface RevenuePoint {
+  label: string;
+  revenue: number;
+  orders: number;
+  averageOrderValue: number;
+}
+
+export interface HourlyInsight {
+  hour: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface RestaurantBiItem {
+  itemId: string;
+  name: string;
+  quantitySold: number;
+  revenue: number;
+  revenueShare: number;
+}
+
+export interface RestaurantDashboardStats {
+  revenue: number;
+  orders: number;
+  delivered: number;
+  averageOrderValue: number;
+  customerDeliveryFees: number;
+  riderPayout: number;
+  platformSubsidy: number;
+  netPlatformRevenue: number;
+  newCustomers: number;
+  returningCustomers: number;
+  peakOrderTime: string;
+  weekOverWeekGrowth: number;
+  insights: string[];
+  topItems: RestaurantBiItem[];
+  lowPerformingItems: RestaurantBiItem[];
+  hourlyPerformance: HourlyInsight[];
+  revenueSeries: {
+    daily: RevenuePoint[];
+    weekly: RevenuePoint[];
+    monthly: RevenuePoint[];
+  };
+  cached?: boolean;
 }

@@ -1,122 +1,138 @@
-import { useState, useEffect } from 'react'
-import { useAppData } from '../context/AppContext';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { authService } from '../main';
+import { useState } from "react";
+import { useAppData } from "../context/AppContext";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { authService } from "../main";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { FiHome, FiShoppingBag, FiTruck } from "react-icons/fi";
 
-type Role = "customer" | "rider" | "seller" | null
+type Role = "customer" | "rider" | "seller" | null;
 
 const roleConfig = {
-    customer: {
-        emoji: "🍽️",
-        label: "Customer",
-        desc: "Order food from your favourite restaurants",
-    },
-    rider: {
-        emoji: "🛵",
-        label: "Delivery Rider",
-        desc: "Deliver orders and earn on your schedule",
-    },
-    seller: {
-        emoji: "🍳",
-        label: "Restaurant",
-        desc: "List your menu and reach more customers",
-    },
-}
+  customer: {
+    icon: FiShoppingBag,
+    label: "Customer",
+    desc: "Browse nearby restaurants, order food, and track deliveries live.",
+  },
+  rider: {
+    icon: FiTruck,
+    label: "Delivery Rider",
+    desc: "Accept nearby delivery requests and manage active orders.",
+  },
+  seller: {
+    icon: FiHome,
+    label: "Restaurant Owner",
+    desc: "Manage menu, orders, and sales analytics in one dashboard.",
+  },
+};
 
 const SelectRole = () => {
-    const [role, setRole] = useState<Role>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [shouldNavigate, setShouldNavigate] = useState(false);
-    const { setUser, user } = useAppData();
-    const navigate = useNavigate();
-    const roles: Exclude<Role, null>[] = ["customer", "rider", "seller"];
+  const [role, setRole] = useState<Role>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { setUser } = useAppData();
+  const navigate = useNavigate();
+  const roles: Exclude<Role, null>[] = ["customer", "rider", "seller"];
 
-    // Navigate after user state is updated with role
-    useEffect(() => {
-        if (shouldNavigate && user?.role) {
-            navigate("/", { replace: true });
-            setShouldNavigate(false);
-        }
-    }, [user, shouldNavigate, navigate]);
-
-    const addRole = async () => {
-        try {
-            setIsLoading(true);
-            const { data } = await axios.put(`${authService}/api/auth/add/role`, { role }, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-            });
-            localStorage.setItem("token", data.token);
-            setUser(data.user);
-            setShouldNavigate(true);
-        } catch (error) {
-            console.log(error);
-            alert("Error adding role");
-            setIsLoading(false);
-        }
+  const addRole = async () => {
+    try {
+      setIsLoading(true);
+      const { data } = await axios.put(
+        `${authService}/api/auth/add/role`,
+        { role },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.log(error);
+      alert("Error adding role");
+      setIsLoading(false);
     }
+  };
 
-    return (
-        <div className="flex min-h-screen items-center justify-center bg-white px-4">
-            <div className="w-full max-w-md space-y-6">
-
-                {/* Header */}
-                <div className="text-center space-y-1">
-                    <h1 className="text-3xl font-bold text-[#E23774]">BhookBuster</h1>
-                    <p className="text-gray-500 text-sm">How would you like to use the app?</p>
-                </div>
-
-                {/* Role Cards */}
-                <div className="space-y-3">
-                    {roles.map((r) => {
-                        const config = roleConfig[r];
-                        const isSelected = role === r;
-                        return (
-                            <button
-                                key={r}
-                                onClick={() => setRole(r)}
-                                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left
-                                    ${isSelected
-                                        ? "border-[#E23774] bg-pink-50"
-                                        : "border-gray-200 hover:border-pink-200 hover:bg-gray-50"
-                                    }`}
-                            >
-                                <span className="text-3xl">{config.emoji}</span>
-                                <div>
-                                    <p className={`font-semibold text-sm ${isSelected ? "text-[#E23774]" : "text-gray-800"}`}>
-                                        {config.label}
-                                    </p>
-                                    <p className="text-xs text-gray-400">{config.desc}</p>
-                                </div>
-                                {/* Radio indicator */}
-                                <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center
-                                    ${isSelected ? "border-[#E23774]" : "border-gray-300"}`}>
-                                    {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#E23774]" />}
-                                </div>
-                            </button>
-                        )
-                    })}
-                </div>
-
-                {/* Continue Button */}
-                <button
-                    disabled={!role || isLoading}
-                    onClick={addRole}
-                    className="w-full py-3 rounded-xl bg-[#E23774] text-white font-semibold text-sm
-                        hover:bg-[#c41e5b] transition-colors
-                        disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? "Processing..." : `Continue as ${role ? roleConfig[role].label : "..."}`}
-                </button>
-
-                <p className="text-center text-xs text-gray-400">
-                    You can change this later in your profile settings
-                </p>
-            </div>
+  return (
+    <div className="min-h-screen bg-[#0f0f0f] px-4 py-8 text-white">
+      <div className="mx-auto grid min-h-[84vh] max-w-5xl overflow-hidden rounded-[32px] border border-white/10 bg-[url('/premium-orbit.svg'),linear-gradient(180deg,#121212,#121212)] bg-cover bg-center shadow-[0_26px_90px_rgba(0,0,0,0.4)] lg:grid-cols-[1fr_1.1fr]">
+        <div className="border-b border-white/10 p-7 lg:border-b-0 lg:border-r lg:p-9">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#facc15]/20 bg-[#facc15]/10 px-3 py-1.5 text-xs uppercase tracking-[0.2em] text-[#facc15]">
+            BhookBuster setup
+          </div>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight md:text-4xl">Choose how you want to use BhookBuster.</h1>
+          <p className="mt-4 text-sm leading-6 text-neutral-300">
+            Your role controls what dashboard and tools you see first. You can still switch later in account settings.
+          </p>
+          <div className="mt-8 grid gap-3">
+            <Card className="border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-semibold text-[#facc15]">Customer</p>
+              <p className="mt-1 text-xs text-neutral-400">Order and track with realtime updates.</p>
+            </Card>
+            <Card className="border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-semibold text-[#facc15]">Rider</p>
+              <p className="mt-1 text-xs text-neutral-400">Go online, accept nearby jobs, and deliver.</p>
+            </Card>
+            <Card className="border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-semibold text-[#facc15]">Restaurant Owner</p>
+              <p className="mt-1 text-xs text-neutral-400">Run menu, fulfillment, and business analytics.</p>
+            </Card>
+          </div>
         </div>
-    )
-}
 
-export default SelectRole
+        <div className="flex items-center p-6 lg:p-9">
+          <div className="w-full space-y-4">
+            {roles.map((r) => {
+              const config = roleConfig[r];
+              const Icon = config.icon;
+              const isSelected = role === r;
+              return (
+                <button
+                  key={r}
+                  onClick={() => setRole(r)}
+                  className={`w-full rounded-[22px] border px-4 py-4 text-left transition ${
+                    isSelected
+                      ? "border-[#facc15]/40 bg-[#facc15]/10 shadow-[0_12px_40px_rgba(250,204,21,0.12)]"
+                      : "border-white/10 bg-[#171717] hover:border-white/20 hover:bg-[#1c1c1c]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                        isSelected ? "bg-[#facc15] text-[#0f0f0f]" : "bg-white/10 text-[#facc15]"
+                      }`}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold ${isSelected ? "text-[#facc15]" : "text-white"}`}>{config.label}</p>
+                      <p className="mt-1 text-xs text-neutral-400">{config.desc}</p>
+                    </div>
+                    <div
+                      className={`h-5 w-5 rounded-full border-2 ${
+                        isSelected ? "border-[#facc15] bg-[#facc15]" : "border-white/30"
+                      }`}
+                    />
+                  </div>
+                </button>
+              );
+            })}
+
+            <Button fullWidth size="lg" disabled={!role || isLoading} onClick={addRole} className="mt-3">
+              {isLoading ? "Processing..." : `Continue as ${role ? roleConfig[role].label : "..."}`}
+            </Button>
+
+            <p className="text-center text-xs text-neutral-500">
+              This only sets your starting dashboard. You can update role preferences later.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SelectRole;

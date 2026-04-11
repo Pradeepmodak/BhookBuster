@@ -54,8 +54,13 @@ export const myProfile = TryCatch(async (req: Request, res: Response) => {
     if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
     }
-    // Do NOT re-sign a token here. Other services (restaurant, rider) may embed
-    // extra fields (e.g. restaurantId) into the JWT. Re-signing from just req.user
-    // would strip those fields and cause infinite reload loops.
-    res.status(200).json({ user });
+    // Refresh the token from the latest DB-backed user state while preserving
+    // service-specific JWT fields (for example restaurantId) that may already
+    // exist on the incoming token payload.
+    const mergedUser = {
+        ...(typeof req.user === "object" ? req.user : {}),
+        ...(user.toObject ? user.toObject() : user),
+    };
+    const token = jwt.sign({ user: mergedUser }, process.env.JWT_SECRET_KEY as string, { expiresIn: '15d' });
+    res.status(200).json({ user, token });
 });

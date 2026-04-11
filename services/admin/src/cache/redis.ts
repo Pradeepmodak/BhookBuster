@@ -5,6 +5,12 @@ let ready = false;
 
 const getRedisUrl = () => process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
+export const CACHE_TTL = {
+  stats: 60,
+  lists: 60 * 5,
+  trends: 60 * 5,
+} as const;
+
 export const connectRedis = async () => {
   if (client && ready) {
     return client;
@@ -36,24 +42,65 @@ export const connectRedis = async () => {
 };
 
 export const getCache = async <T>(key: string): Promise<T | null> => {
-  const redis = await connectRedis();
+  try {
+    const redis = await connectRedis();
+    if (!redis || !ready) {
+      return null;
+    }
 
-  if (!redis || !ready) {
+    const value = await redis.get(key);
+    return value ? (JSON.parse(value) as T) : null;
+  } catch (_error) {
+    console.warn(`Redis read skipped for ${key}`);
     return null;
   }
-
-  const value = await redis.get(key);
-  return value ? (JSON.parse(value) as T) : null;
 };
 
 export const setCache = async (key: string, value: unknown, ttlInSeconds: number) => {
-  const redis = await connectRedis();
+  try {
+    const redis = await connectRedis();
+    if (!redis || !ready) {
+      return;
+    }
 
-  if (!redis || !ready) {
-    return;
+    await redis.set(key, JSON.stringify(value), {
+      EX: ttlInSeconds,
+    });
+  } catch (_error) {
+    console.warn(`Redis write skipped for ${key}`);
+  }
+};
+
+export const deleteCache = async (key: string) => {
+  try {
+    const redis = await connectRedis();
+    if (!redis || !ready) {
+      return;
+    }
+
+    await redis.del(key);
+  } catch (_error) {
+    console.warn(`Redis delete skipped for ${key}`);
+  }
+};
+
+export const withCache = async <T>({
+  key,
+  ttl,
+  fetcher,
+}: {
+  key: string;
+  ttl: number;
+  fetcher: () => Promise<T>;
+}): Promise<{ data: T; cached: boolean }> => {
+  // Trade-off: TTL-based caching keeps the implementation incremental and easy
+  // to reason about, at the cost of allowing short-lived stale reads.
+  const cached = await getCache<T>(key);
+  if (cached) {
+    return { data: cached, cached: true };
   }
 
-  await redis.set(key, JSON.stringify(value), {
-    EX: ttlInSeconds,
-  });
+  const data = await fetcher();
+  await setCache(key, data, ttl);
+  return { data, cached: false };
 };

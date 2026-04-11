@@ -11,6 +11,7 @@ import { connectRabbitMQ } from './config/rabbitmq.js';
 import { startPaymentConsumer } from './config/payment.consumer.js';
 import { connectRedis } from './cache/redis.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
+import { performanceLogger } from './middlewares/performanceLogger.js';
 dotenv.config();
 // Pause THIS function until promise resolves
 await connectDB();
@@ -21,6 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
+app.use(performanceLogger);
 app.use("/api/restaurant",restaurantRoutes);
 app.use("/api/item",itemRoutes);
 app.use("/api/cart",cartRoutes);

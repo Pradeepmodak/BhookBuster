@@ -4,10 +4,15 @@
 
 :root {
   color-scheme: dark;
+  --color-background: #0f0f0f;
+  --color-card: #1a1a1a;
+  --color-accent: #facc15;
+  --color-text: #ffffff;
+  --color-text-muted: #d1d5db;
 }
 
 html {
-  background: #0f0f0f;
+  background: var(--color-background);
 }
 
 body {
@@ -15,9 +20,9 @@ body {
   min-height: 100vh;
   background:
     radial-gradient(circle at top, rgba(250, 204, 21, 0.08), transparent 24%),
-    linear-gradient(180deg, #111111 0%, #0f0f0f 100%);
-  color: #ffffff;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    linear-gradient(180deg, #111111 0%, var(--color-background) 100%);
+  color: var(--color-text);
+  font-family: Inter, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 #root {
@@ -40,4 +45,74 @@ body {
 *::-webkit-scrollbar-thumb {
   background: rgba(250, 204, 21, 0.3);
   border-radius: 999px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(250, 204, 21, 0.05), transparent 24%),
+    var(--color-background);
+}
+
+@keyframes riderWavePulse {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.78;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes riderCoreGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.16);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 28px 8px rgba(250, 204, 21, 0.12);
+  }
+}
+
+.rider-wave-shell {
+  position: relative;
+  display: flex;
+  height: 112px;
+  width: 112px;
+  align-items: center;
+  justify-content: center;
+}
+
+.rider-wave-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 204, 21, 0.34);
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.16), rgba(250, 204, 21, 0.02) 62%, transparent 72%);
+  animation: riderWavePulse 2.8s ease-out infinite;
+}
+
+.rider-wave-ring--delay {
+  animation-delay: 1.4s;
+}
+
+.rider-wave-core {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 54px;
+  width: 54px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 244, 180, 0.95), rgba(250, 204, 21, 0.86) 45%, rgba(168, 112, 0, 0.92) 100%);
+  animation: riderCoreGlow 2.3s ease-in-out infinite;
 }

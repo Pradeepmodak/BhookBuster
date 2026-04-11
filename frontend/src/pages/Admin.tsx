@@ -16,6 +16,7 @@ import {
   FiActivity,
   FiBarChart2,
   FiClock,
+  FiAlertCircle,
   FiHome,
   FiLogOut,
   FiPackage,
@@ -26,20 +27,28 @@ import {
 import AdminRestaurantCard from "../components/AdminRestaurantCard";
 import AdminRiderCard from "../components/AdminRiderCard";
 import { adminService } from "../main";
-import type { AdminStats, OrdersTrendPoint, TopSellingItem } from "../types";
+import type { AdminStats, OrdersTrendPoint, PendingRestaurant, PendingRider, TopSellingItem } from "../types";
 import { useAppData } from "../context/AppContext";
-
-type PendingRestaurant = Record<string, any>;
-type PendingRider = {
-  _id: string;
-  phoneNumber: string;
-  aadharNumber: string;
-  drivingLicenseNumber: string;
-  picture: string;
-  isVerified: boolean;
-  isAvailable: boolean;
-};
+import Button from "../components/ui/Button";
 type AdminTab = "overview" | "restaurant" | "rider";
+
+const emptyAdminStats: AdminStats = {
+  totalRevenue: 0,
+  totalRiderPayout: 0,
+  totalPlatformSubsidy: 0,
+  netPlatformRevenue: 0,
+  ordersCount: 0,
+  usersCount: 0,
+  totalCustomers: 0,
+  totalRestaurants: 0,
+  totalRiders: 0,
+  growthPercent: 0,
+  orderGrowthPercent: 0,
+  peakOrderTime: "No data",
+  pendingRestaurants: 0,
+  pendingRiders: 0,
+  cached: false,
+};
 
 const buildStatCards = (stats: AdminStats) => [
   {
@@ -55,16 +64,46 @@ const buildStatCards = (stats: AdminStats) => [
     icon: FiPackage,
   },
   {
-    label: "Users",
-    value: stats.usersCount.toLocaleString(),
-    change: `${stats.pendingRestaurants} restaurants pending`,
+    label: "Platform Net",
+    value: `Rs ${stats.netPlatformRevenue.toLocaleString()}`,
+    change: `Rs ${stats.totalPlatformSubsidy.toLocaleString()} subsidy`,
     icon: FiUsers,
   },
   {
-    label: "Peak Time",
-    value: stats.peakOrderTime,
+    label: "Rider Payout",
+    value: `Rs ${stats.totalRiderPayout.toLocaleString()}`,
     change: `${stats.pendingRiders} riders pending`,
     icon: FiClock,
+  },
+];
+
+const buildFootprintCards = (stats: AdminStats) => [
+  {
+    label: "Customers",
+    value: stats.totalCustomers.toLocaleString(),
+    helper: "People ordering across BhookBuster",
+    icon: FiUsers,
+    accent: "from-[#facc15]/18 via-[#facc15]/8 to-transparent",
+    iconClassName: "text-[#facc15]",
+    valueClassName: "text-white",
+  },
+  {
+    label: "Restaurants",
+    value: stats.totalRestaurants.toLocaleString(),
+    helper: "Seller partners on the network",
+    icon: FiHome,
+    accent: "from-emerald-400/18 via-emerald-400/8 to-transparent",
+    iconClassName: "text-emerald-300",
+    valueClassName: "text-emerald-200",
+  },
+  {
+    label: "Riders",
+    value: stats.totalRiders.toLocaleString(),
+    helper: "Delivery fleet available to dispatch",
+    icon: FiTruck,
+    accent: "from-sky-400/18 via-sky-400/8 to-transparent",
+    iconClassName: "text-sky-300",
+    valueClassName: "text-sky-200",
   },
 ];
 
@@ -76,6 +115,7 @@ const Admin = () => {
   const [ordersTrend, setOrdersTrend] = useState<OrdersTrendPoint[]>([]);
   const [topItems, setTopItems] = useState<TopSellingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<AdminTab>("overview");
 
   const authHeaders = useMemo(
@@ -88,23 +128,60 @@ const Admin = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
 
-      const [pendingRestaurants, pendingRiders, statsResponse, trendResponse, topItemsResponse] =
-        await Promise.all([
-          axios.get(`${adminService}/v1/api/admin/restaurant/pending`, { headers: authHeaders }),
-          axios.get(`${adminService}/v1/api/admin/rider/pending`, { headers: authHeaders }),
-          axios.get(`${adminService}/v1/api/admin/stats`, { headers: authHeaders }),
-          axios.get(`${adminService}/v1/api/admin/orders-trend?days=7`, { headers: authHeaders }),
-          axios.get(`${adminService}/v1/api/admin/top-items`, { headers: authHeaders }),
-        ]);
+      const requests = await Promise.allSettled([
+        axios.get(`${adminService}/v1/api/admin/restaurant/pending`, {
+          headers: authHeaders,
+          timeout: 10000,
+        }),
+        axios.get(`${adminService}/v1/api/admin/rider/pending`, {
+          headers: authHeaders,
+          timeout: 10000,
+        }),
+        axios.get(`${adminService}/v1/api/admin/stats`, {
+          headers: authHeaders,
+          timeout: 10000,
+        }),
+        axios.get(`${adminService}/v1/api/admin/orders-trend?days=7`, {
+          headers: authHeaders,
+          timeout: 10000,
+        }),
+        axios.get(`${adminService}/v1/api/admin/top-items`, {
+          headers: authHeaders,
+          timeout: 10000,
+        }),
+      ]);
 
-      setRestaurants(pendingRestaurants.data.restaurants || []);
-      setRiders(pendingRiders.data.riders || []);
-      setStats(statsResponse.data);
-      setOrdersTrend(trendResponse.data.trend || []);
-      setTopItems(topItemsResponse.data.items || []);
+      const [pendingRestaurants, pendingRiders, statsResponse, trendResponse, topItemsResponse] = requests;
+
+      setRestaurants(
+        pendingRestaurants.status === "fulfilled" ? pendingRestaurants.value.data.restaurants || [] : [],
+      );
+      setRiders(
+        pendingRiders.status === "fulfilled" ? pendingRiders.value.data.riders || [] : [],
+      );
+      setStats(
+        statsResponse.status === "fulfilled" ? statsResponse.value.data : emptyAdminStats,
+      );
+      setOrdersTrend(
+        trendResponse.status === "fulfilled" ? trendResponse.value.data.trend || [] : [],
+      );
+      setTopItems(
+        topItemsResponse.status === "fulfilled" ? topItemsResponse.value.data.items || [] : [],
+      );
+
+      if (requests.some((result) => result.status === "rejected")) {
+        setLoadError("Some admin analytics requests failed, so partial fallback data is being shown.");
+      }
     } catch (error) {
       console.error(error);
+      setStats(emptyAdminStats);
+      setRestaurants([]);
+      setRiders([]);
+      setOrdersTrend([]);
+      setTopItems([]);
+      setLoadError("Admin analytics could not be loaded fully. Retry after checking the admin service.");
     } finally {
       setLoading(false);
     }
@@ -112,6 +189,7 @@ const Admin = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = () => {
@@ -121,12 +199,29 @@ const Admin = () => {
     window.location.href = "/login";
   };
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f]">
         <div className="space-y-4 text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#2a2a2a] border-t-[#facc15]" />
           <p className="text-sm text-neutral-400">Preparing admin analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f] px-4 text-white">
+        <div className="max-w-md rounded-[28px] border border-white/10 bg-[#171717] p-6 text-center">
+          <FiAlertCircle className="mx-auto text-3xl text-[#facc15]" />
+          <h2 className="mt-4 text-xl font-semibold">Admin dashboard could not load</h2>
+          <p className="mt-2 text-sm leading-6 text-neutral-400">
+            The admin service did not return usable analytics data.
+          </p>
+          <Button className="mt-5" onClick={fetchData}>
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -228,6 +323,48 @@ const Admin = () => {
                 </motion.div>
               ))}
             </div>
+
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-[#171717] p-5">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">BhookBuster network footprint</h2>
+                  <p className="text-sm text-neutral-400">
+                    A live snapshot of the customers, restaurants, and riders currently inside the platform.
+                  </p>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-neutral-400">
+                  Marketplace coverage
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {buildFootprintCards(stats).map((card) => (
+                  <motion.div
+                    key={card.label}
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    className={`relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br ${card.accent} p-5`}
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_42%)]" />
+                    <div className="relative flex items-start justify-between">
+                      <div>
+                        <div className="text-sm text-neutral-400">{card.label}</div>
+                        <div className={`mt-3 text-3xl font-semibold ${card.valueClassName}`}>{card.value}</div>
+                        <div className="mt-2 max-w-[18rem] text-sm leading-6 text-neutral-400">{card.helper}</div>
+                      </div>
+                      <div className={`rounded-2xl border border-white/10 bg-black/20 p-3 ${card.iconClassName}`}>
+                        <card.icon className="text-xl" />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {loadError ? (
+              <div className="mt-5 rounded-[22px] border border-[#facc15]/20 bg-[#facc15]/10 px-4 py-3 text-sm text-[#f5dea0]">
+                {loadError}
+              </div>
+            ) : null}
 
             <AnimatePresence mode="wait">
               {tab === "overview" && (
@@ -338,6 +475,11 @@ const Admin = () => {
                             label: "Pending riders",
                             value: riders.length,
                             accent: "text-emerald-300",
+                          },
+                          {
+                            label: "Users",
+                            value: stats.usersCount,
+                            accent: "text-white",
                           },
                           {
                             label: "Peak order time",

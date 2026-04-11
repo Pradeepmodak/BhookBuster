@@ -1,24 +1,55 @@
-import { useState } from "react";
-import type { IRestaurant } from "../types.ts";
+import { useRef, useState } from "react";
 import axios from "axios";
-import { restaurantService } from "../main";
 import toast from "react-hot-toast";
-import { BiEdit, BiMapPin, BiSave } from "react-icons/bi";
+import { BiEdit, BiMapPin, BiSave, BiUpload } from "react-icons/bi";
+import { FiLogOut, FiPower } from "react-icons/fi";
+import type { IRestaurant } from "../types.ts";
+import { restaurantService } from "../main";
 import { useAppData } from "../context/AppContext.tsx";
 import VerificationBadge from "./VerificationBadge";
+import Button from "./ui/Button";
+import Card from "./ui/Card";
+import Input from "./ui/Input";
+import { getErrorMessage } from "../utils/http";
 
-interface props {
+interface Props {
   restaurant: IRestaurant;
   isSeller: boolean;
   onUpdate: (restaurant: IRestaurant) => void;
 }
 
-const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
+const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: Props) => {
   const [editMode, setEditMode] = useState(false);
   const [name, setName] = useState(restaurant.name);
   const [description, setDescription] = useState(restaurant.description || "");
   const [isOpen, setIsOpen] = useState(restaurant.isOpen);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { setIsAuth, setUser } = useAppData();
+
+  const handleBannerUpload = async (file?: File | null) => {
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await axios.put(`${restaurantService}/api/restaurant/image/update`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      onUpdate(data.restaurant);
+      toast.success("Banner updated");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update banner"));
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const toggleOpenStatus = async () => {
     try {
@@ -29,17 +60,14 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
-      // ✅ Fix: use the returned value from server, not local toggle
       const newStatus = data.restaurant.isOpen;
       setIsOpen(newStatus);
-      onUpdate(data.restaurant); // ✅ propagate to parent so reload stays consistent
+      onUpdate(data.restaurant);
       toast.success(data.message);
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to update restaurant status"
-      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update restaurant status"));
       console.error("Error updating restaurant status:", error);
     }
   };
@@ -54,22 +82,18 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
       onUpdate(data.restaurant);
       toast.success(data.message || "Restaurant updated successfully");
       setEditMode(false);
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to update restaurant"
-      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update restaurant"));
       console.error("Error saving changes:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  const { setIsAuth, setUser } = useAppData();
 
   const logoutHandler = async () => {
     try {
@@ -80,11 +104,12 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
-    } catch (_) {
-      // best effort — log out regardless
+    } catch {
+      // Best effort only. We still log the seller out locally.
     }
+
     localStorage.setItem("token", "");
     setIsAuth(false);
     setUser(null);
@@ -92,170 +117,126 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: props) => {
   };
 
   return (
-    <div className="mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-[#333] bg-[#181818] shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
-      
-      {/* Banner */}
-      <div className="relative group">
-        {restaurant.image && (
-          <img
-            src={restaurant.image}
-            alt={restaurant.name}
-            className="h-48 w-full object-cover transition duration-300"
-          />
+    <Card className="mx-auto max-w-4xl overflow-hidden">
+      <div className="relative">
+        {restaurant.image ? (
+          <img src={restaurant.image} alt={restaurant.name} className="h-52 w-full object-cover" />
+        ) : (
+          <div className="h-52 w-full bg-[linear-gradient(135deg,#1f1f1f,#101010)]" />
         )}
-        {isSeller && (
-          <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
-            <div className="flex items-center gap-2 rounded-full bg-[#d4a017] px-4 py-2 text-sm font-semibold text-[#0f0f0f] hover:brightness-110">
-              {loading ? (
-                <span>Uploading...</span>
-              ) : (
-                <>
-                  <BiEdit className="h-5 w-5" />
-                  <span>Update Banner</span>
-                </>
-              )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+        {isSeller ? (
+          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-accent)]">Restaurant profile</p>
+              <p className="mt-2 text-sm text-white/80">
+                {editMode ? "Update banner, name, and description in one place." : "Manage branding and profile details from a single edit flow."}
+              </p>
             </div>
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              disabled={loading}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                try {
-                  setLoading(true);
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  const { data } = await axios.put(
-                    `${restaurantService}/api/restaurant/image/update`,
-                    formData,
-                    {
-                      headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                      },
-                    }
-                  );
-                  onUpdate(data.restaurant);
-                  toast.success("Banner updated!");
-                } catch (error: any) {
-                  toast.error(
-                    error.response?.data?.message || "Failed to update banner"
-                  );
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            />
-          </label>
-        )}
+            <Button variant="secondary" size="sm" onClick={() => setEditMode((value) => !value)} leftIcon={<BiEdit />}>
+              {editMode ? "Cancel Edit" : "Edit Profile"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      {/* Body */}
-      <div className="space-y-4 p-5 text-white">
-
-        {/* Name + Location row */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+      <div className="space-y-5 p-5 text-white md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 flex-1">
             {editMode ? (
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border border-[#444] bg-[#1a1a1a] px-3 py-1.5 text-lg font-semibold text-white outline-none focus:border-[#d4a017] transition-colors"
-              />
+              <Input label="Restaurant Name" value={name} onChange={(event) => setName(event.target.value)} className="px-0" />
             ) : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-semibold text-white">{name}</h2>
-                {isSeller && (
-                  <VerificationBadge isVerified={restaurant.isVerified} size={18} />
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold text-white">{name}</h2>
+                {isSeller ? <VerificationBadge isVerified={restaurant.isVerified} size={18} /> : null}
               </div>
             )}
-            <div className="mt-1 flex items-center gap-1.5 text-sm text-neutral-400">
-              <BiMapPin className="h-4 w-4 shrink-0 text-[#d4a017]" />
-              <span className="truncate">
-                {restaurant.autoLocation?.formattedAddress || "Location unavailable"}
-              </span>
+
+            <div className="mt-3 flex items-start gap-2 text-sm text-gray-400">
+              <BiMapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+              <span>{restaurant.autoLocation?.formattedAddress || "Location unavailable"}</span>
             </div>
           </div>
-
-          {isSeller && (
-            <button
-              onClick={() => setEditMode(!editMode)}
-              className="shrink-0 rounded-lg border border-[#333] p-1.5 text-neutral-400 hover:border-[#d4a017] hover:text-[#f0c040] transition-colors"
-            >
-              <BiEdit size={18} />
-            </button>
-          )}
         </div>
 
-        {/* Description */}
         {editMode ? (
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full rounded-xl border border-[#444] bg-[#1a1a1a] px-3 py-2 text-sm text-white outline-none focus:border-[#d4a017] transition-colors resize-none"
-          />
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-white">Description</span>
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={5}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-[var(--color-accent)]/40"
+              />
+            </label>
+
+            <Card className="space-y-3 p-4">
+              <p className="text-sm font-medium text-white">Banner</p>
+              <p className="text-sm text-gray-400">Keep restaurant identity updates inside the same edit flow.</p>
+              <Button
+                variant="secondary"
+                leftIcon={<BiUpload />}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+              >
+                {loading ? "Uploading..." : "Upload New Banner"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={loading}
+                onChange={(event) => handleBannerUpload(event.target.files?.[0] || null)}
+              />
+            </Card>
+          </div>
         ) : (
-          <p className="text-sm text-neutral-400">
-            {description || "No description added"}
-          </p>
+          <p className="text-sm leading-6 text-gray-400">{description || "No description added yet."}</p>
         )}
 
-        {/* Status + Actions row */}
-        <div className="flex items-center justify-between border-t border-[#2a2a2a] pt-4">
-          <span
-            className={`text-sm font-semibold tracking-wide ${
-              isOpen ? "text-emerald-400" : "text-red-400"
-            }`}
-          >
-            {isOpen ? "● OPEN" : "● CLOSED"}
-          </span>
-
-          <div className="flex items-center gap-2">
-            {editMode && (
-              <button
-                onClick={saveChanges}
-                disabled={loading}
-                className="flex items-center gap-1.5 rounded-xl bg-[#d4a017] px-3 py-1.5 text-sm font-semibold text-[#0f0f0f] hover:brightness-110 disabled:opacity-50 transition"
-              >
-                <BiSave size={16} />
-                {loading ? "Saving..." : "Save"}
-              </button>
-            )}
-
-            {isSeller && (
-              <button
-                onClick={toggleOpenStatus}
-                className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${
-                  isOpen
-                    ? "bg-red-600/20 border border-red-500/40 text-red-400 hover:bg-red-600/30"
-                    : "bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30"
-                }`}
-              >
-                {isOpen ? "Close Restaurant" : "Open Restaurant"}
-              </button>
-            )}
-
-            {isSeller && (
-              <button
-                onClick={logoutHandler}
-                className="rounded-xl border border-[#333] px-4 py-1.5 text-sm font-medium text-neutral-400 hover:border-red-400/40 hover:text-red-300 transition"
-              >
-                Logout
-              </button>
-            )}
-          </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Card className="p-4">
+            <p className="text-sm text-gray-400">Status</p>
+            <p className={`mt-2 text-lg font-semibold ${isOpen ? "text-emerald-300" : "text-red-300"}`}>
+              {isOpen ? "Open now" : "Closed now"}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-gray-400">Verification</p>
+            <p className="mt-2 text-lg font-semibold text-white">
+              {restaurant.isVerified ? "Approved" : "Pending review"}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-gray-400">Created</p>
+            <p className="mt-2 text-lg font-semibold text-white">
+              {new Date(restaurant.createdAt).toLocaleDateString()}
+            </p>
+          </Card>
         </div>
 
-        {/* Created date */}
-        <p className="text-xs text-neutral-600">
-          Created on {new Date(restaurant.createdAt).toLocaleDateString()}
-        </p>
+        {isSeller ? (
+          <div className="flex flex-wrap gap-3 border-t border-white/10 pt-5">
+            {editMode ? (
+              <Button onClick={saveChanges} disabled={loading} leftIcon={<BiSave />}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
+            ) : null}
+
+            <Button variant={isOpen ? "danger" : "secondary"} onClick={toggleOpenStatus} leftIcon={<FiPower />}>
+              {isOpen ? "Close Restaurant" : "Open Restaurant"}
+            </Button>
+
+            <Button variant="ghost" onClick={logoutHandler} leftIcon={<FiLogOut />}>
+              Logout
+            </Button>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </Card>
   );
 };
 

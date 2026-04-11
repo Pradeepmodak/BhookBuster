@@ -33,6 +33,7 @@ interface IRider {
   isVerified: boolean;
 }
 
+
 const RiderEarnings = ({ profile }: { profile: IRider | null }) => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -204,13 +205,11 @@ const RiderEarnings = ({ profile }: { profile: IRider | null }) => {
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: "#666" } as any}
                 dy={10}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: "#666" } as any}
                 tickFormatter={(val) => `₹${val}`}
               />
               <Tooltip
@@ -221,7 +220,7 @@ const RiderEarnings = ({ profile }: { profile: IRider | null }) => {
                   background: "#1a1a1a",
                   boxShadow: "0 10px 15px -3px rgba(0,0,0,0.4)",
                 }}
-                formatter={(value: any) => [`₹${value}`, "Earned"] as [string, string]}
+                formatter={(value) => [`₹${value ?? 0}`, "Earned"] as [string, string]}
                 labelStyle={{ fontWeight: "bold", color: "#f0c040", marginBottom: "4px" }}
                 itemStyle={{ color: "#d4a017" }}
               />

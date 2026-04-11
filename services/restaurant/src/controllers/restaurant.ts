@@ -6,6 +6,8 @@ import getBuffer from "../config/datauri.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import { fetchNearbyRestaurants } from "../services/catalog.js";
+import { getRestaurantDashboardAnalytics } from "../services/analytics.js";
+import { deleteCache } from "../cache/redis.js";
 
 export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => {
     const user = req.user;
@@ -64,6 +66,8 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
         },
         isVerified: false,
     });
+    await deleteCache("admin:verification:restaurants");
+    await deleteCache("admin:stats");
     return res.status(201).json({
         message: "Restaurant created successfully",
         restaurant,
@@ -114,14 +118,18 @@ export const updateStatusRestaurant = TryCatch(
                 ownerId: req.user._id,
             },
             { isOpen: status },
-            { returnDocument: 'after' }
+            { new: true }
         );
         if (!restaurant) {
             return res.status(404).json({
-                message: "Restaurant status Updated",
-                restaurant,
+                message: "Restaurant not found",
             });
         }
+
+        return res.status(200).json({
+            message: status ? "Restaurant is now open" : "Restaurant is now closed",
+            restaurant,
+        });
     }
 );
 
@@ -219,4 +227,23 @@ export const fetchSingleRestaurant = TryCatch(async (req, res) => {
     throw new AppError("Restaurant not found", 404);
   }
   res.json(restaurant);
+});
+
+export const getRestaurantAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Unauthorized",
+    });
+  }
+
+  if (typeof req.params.id !== "string" || !req.params.id) {
+    throw new AppError("Restaurant id is required", 400);
+  }
+
+  const analytics = await getRestaurantDashboardAnalytics({
+    restaurantId: req.params.id,
+    ownerId: req.user._id.toString(),
+  });
+
+  res.json(analytics);
 });

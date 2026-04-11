@@ -1,6 +1,6 @@
 import { ObjectId, type Document } from "mongodb";
 import { AppError } from "../middlewares/errorHandler.js";
-import { getCache, setCache } from "../cache/redis.js";
+import { CACHE_TTL, deleteCache, withCache } from "../cache/redis.js";
 import {
   getMenuItemCollection,
   getOrderCollection,
@@ -8,10 +8,6 @@ import {
   getRiderCollection,
   getUserCollection,
 } from "../utils/collection.js";
-
-const ADMIN_STATS_TTL = 120;
-const ADMIN_TREND_TTL = 180;
-const ADMIN_TOP_ITEMS_TTL = 180;
 
 const buildTrendRange = (days: number) => {
   const end = new Date();
@@ -42,6 +38,7 @@ export const fetchPendingRestaurants = async () => {
   return {
     count: restaurants.length,
     restaurants,
+    cached: false,
   };
 };
 
@@ -54,6 +51,7 @@ export const fetchPendingRiders = async () => {
   return {
     count: riders.length,
     riders,
+    cached: false,
   };
 };
 
@@ -71,6 +69,9 @@ export const markRestaurantVerified = async (id: string) => {
   if (result.matchedCount === 0) {
     throw new AppError("Restaurant not found", 404);
   }
+
+  await deleteCache("admin:verification:restaurants");
+  await deleteCache("admin:stats");
 
   return { message: "Restaurant verified successfully" };
 };
@@ -90,254 +91,259 @@ export const markRiderVerified = async (id: string) => {
     throw new AppError("Rider not found", 404);
   }
 
+  await deleteCache("admin:verification:riders");
+  await deleteCache("admin:stats");
+
   return { message: "Rider verified successfully" };
 };
 
 export const fetchAdminStats = async () => {
-  const cacheKey = "admin:stats";
-  const cached = await getCache<Record<string, unknown>>(cacheKey);
+  const { data, cached } = await withCache({
+    key: "admin:stats",
+    ttl: CACHE_TTL.stats,
+    fetcher: async () => {
+      const ordersCollection = await getOrderCollection();
+      const userCollection = await getUserCollection();
+      const restaurantCollection = await getRestaurantCollection();
+      const riderCollection = await getRiderCollection();
 
-  if (cached) {
-    return {
-      ...cached,
-      cached: true,
-    };
-  }
+      const now = new Date();
+      const currentStart = new Date(now);
+      currentStart.setDate(now.getDate() - 29);
+      currentStart.setHours(0, 0, 0, 0);
 
-  const ordersCollection = await getOrderCollection();
-  const userCollection = await getUserCollection();
-  const restaurantCollection = await getRestaurantCollection();
-  const riderCollection = await getRiderCollection();
+      const previousEnd = new Date(currentStart);
+      previousEnd.setMilliseconds(previousEnd.getMilliseconds() - 1);
 
-  const now = new Date();
-  const currentStart = new Date(now);
-  currentStart.setDate(now.getDate() - 29);
-  currentStart.setHours(0, 0, 0, 0);
+      const previousStart = new Date(previousEnd);
+      previousStart.setDate(previousEnd.getDate() - 29);
+      previousStart.setHours(0, 0, 0, 0);
 
-  const previousEnd = new Date(currentStart);
-  previousEnd.setMilliseconds(previousEnd.getMilliseconds() - 1);
+      const [
+        paidOrders,
+        totalUsers,
+        totalCustomers,
+        totalRestaurants,
+        totalRiders,
+        pendingRestaurants,
+        pendingRiders,
+      ] = await Promise.all([
+        ordersCollection
+          .find({ paymentStatus: "paid" })
+          .project({
+            totalAmount: 1,
+            createdAt: 1,
+            riderAmount: 1,
+            customerDeliveryFee: 1,
+            deliveryFee: 1,
+            platformFee: 1,
+            platformSubsidy: 1,
+            estimatedPlatformRevenue: 1,
+          })
+          .toArray(),
+        userCollection.countDocuments(),
+        userCollection.countDocuments({ role: "customer" }),
+        restaurantCollection.countDocuments(),
+        riderCollection.countDocuments(),
+        restaurantCollection.countDocuments({ isVerified: false }),
+        riderCollection.countDocuments({ isVerified: false }),
+      ]);
 
-  const previousStart = new Date(previousEnd);
-  previousStart.setDate(previousEnd.getDate() - 29);
-  previousStart.setHours(0, 0, 0, 0);
+      const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+      const totalRiderPayout = paidOrders.reduce((sum, order) => sum + Number(order.riderAmount || 0), 0);
+      const totalPlatformSubsidy = paidOrders.reduce(
+        (sum, order) =>
+          sum +
+          Number(
+            order.platformSubsidy ??
+              Math.max(0, Number(order.riderAmount || 0) - Number(order.customerDeliveryFee ?? order.deliveryFee ?? 0)),
+          ),
+        0,
+      );
+      const netPlatformRevenue = paidOrders.reduce(
+        (sum, order) =>
+          sum +
+          Number(
+            order.estimatedPlatformRevenue ??
+              (Number(order.platformFee || 0) +
+                Number(order.customerDeliveryFee ?? order.deliveryFee ?? 0) -
+                Number(order.riderAmount || 0)),
+          ),
+        0,
+      );
+      const ordersCount = paidOrders.length;
 
-  const [paidOrders, totalUsers, pendingRestaurants, pendingRiders] = await Promise.all([
-    ordersCollection
-      .find({ paymentStatus: "paid" })
-      .project({ totalAmount: 1, createdAt: 1, status: 1 })
-      .toArray(),
-    userCollection.countDocuments(),
-    restaurantCollection.countDocuments({ isVerified: false }),
-    riderCollection.countDocuments({ isVerified: false }),
-  ]);
+      const currentRevenue = paidOrders
+        .filter((order) => order.createdAt && new Date(order.createdAt) >= currentStart)
+        .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
-  const totalRevenue = paidOrders.reduce(
-    (sum, order) => sum + Number(order.totalAmount || 0),
-    0,
-  );
+      const previousRevenue = paidOrders
+        .filter((order) => {
+          if (!order.createdAt) return false;
+          const createdAt = new Date(order.createdAt);
+          return createdAt >= previousStart && createdAt <= previousEnd;
+        })
+        .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
-  const ordersCount = paidOrders.length;
+      const currentOrders = paidOrders.filter(
+        (order) => order.createdAt && new Date(order.createdAt) >= currentStart,
+      ).length;
 
-  const currentRevenue = paidOrders
-    .filter((order) => order.createdAt && new Date(order.createdAt) >= currentStart)
-    .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+      const previousOrders = paidOrders.filter((order) => {
+        if (!order.createdAt) return false;
+        const createdAt = new Date(order.createdAt);
+        return createdAt >= previousStart && createdAt <= previousEnd;
+      }).length;
 
-  const previousRevenue = paidOrders
-    .filter((order) => {
-      if (!order.createdAt) {
-        return false;
-      }
-      const createdAt = new Date(order.createdAt);
-      return createdAt >= previousStart && createdAt <= previousEnd;
-    })
-    .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+      const peakOrderBuckets = new Map<number, number>();
+      paidOrders.forEach((order) => {
+        if (!order.createdAt) return;
+        const hour = new Date(order.createdAt).getHours();
+        peakOrderBuckets.set(hour, (peakOrderBuckets.get(hour) || 0) + 1);
+      });
 
-  const currentOrders = paidOrders.filter(
-    (order) => order.createdAt && new Date(order.createdAt) >= currentStart,
-  ).length;
+      const peakOrderHour = [...peakOrderBuckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      const peakOrderTime =
+        typeof peakOrderHour === "number"
+          ? `${String(peakOrderHour).padStart(2, "0")}:00 - ${String((peakOrderHour + 1) % 24).padStart(2, "0")}:00`
+          : "No data";
 
-  const previousOrders = paidOrders.filter((order) => {
-    if (!order.createdAt) {
-      return false;
-    }
-    const createdAt = new Date(order.createdAt);
-    return createdAt >= previousStart && createdAt <= previousEnd;
-  }).length;
-
-  const peakOrderBuckets = new Map<number, number>();
-
-  paidOrders.forEach((order) => {
-    if (!order.createdAt) {
-      return;
-    }
-    const hour = new Date(order.createdAt).getHours();
-    peakOrderBuckets.set(hour, (peakOrderBuckets.get(hour) || 0) + 1);
+      return {
+        totalRevenue,
+        totalRiderPayout,
+        totalPlatformSubsidy,
+        netPlatformRevenue,
+        ordersCount,
+        usersCount: totalUsers,
+        totalCustomers,
+        totalRestaurants,
+        totalRiders,
+        growthPercent: calculateGrowth(currentRevenue, previousRevenue),
+        orderGrowthPercent: calculateGrowth(currentOrders, previousOrders),
+        peakOrderTime,
+        pendingRestaurants,
+        pendingRiders,
+      };
+    },
   });
 
-  const peakOrderHour = [...peakOrderBuckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const peakOrderTime =
-    typeof peakOrderHour === "number"
-      ? `${String(peakOrderHour).padStart(2, "0")}:00 - ${String((peakOrderHour + 1) % 24).padStart(2, "0")}:00`
-      : "No data";
-
-  const stats = {
-    totalRevenue,
-    ordersCount,
-    usersCount: totalUsers,
-    growthPercent: calculateGrowth(currentRevenue, previousRevenue),
-    orderGrowthPercent: calculateGrowth(currentOrders, previousOrders),
-    peakOrderTime,
-    pendingRestaurants,
-    pendingRiders,
-  };
-
-  await setCache(cacheKey, stats, ADMIN_STATS_TTL);
-
-  return {
-    ...stats,
-    cached: false,
-  };
+  return { ...data, cached };
 };
 
 export const fetchTopItems = async () => {
-  const cacheKey = "admin:top-items";
-  const cached = await getCache<Record<string, unknown>>(cacheKey);
+  const { data, cached } = await withCache({
+    key: "admin:top-items",
+    ttl: CACHE_TTL.trends,
+    fetcher: async () => {
+      const orderCollection = await getOrderCollection();
+      const menuItemCollection = await getMenuItemCollection();
 
-  if (cached) {
-    return {
-      ...cached,
-      cached: true,
-    };
-  }
+      const menuItems = await menuItemCollection
+        .find({})
+        .project({ _id: 1, image: 1, description: 1, price: 1 })
+        .toArray();
 
-  const orderCollection = await getOrderCollection();
-  const menuItemCollection = await getMenuItemCollection();
+      const itemMap = new Map(menuItems.map((item) => [String(item._id), item]));
 
-  const menuItems = await menuItemCollection
-    .find({})
-    .project({ _id: 1, image: 1, description: 1, price: 1 })
-    .toArray();
-
-  const itemMap = new Map(
-    menuItems.map((item) => [String(item._id), item]),
-  );
-
-  const topItems = await orderCollection
-    .aggregate([
-      { $match: { paymentStatus: "paid" } },
-      { $unwind: "$items" },
-      {
-        $group: {
-          _id: "$items.itemId",
-          name: { $first: "$items.name" },
-          quantitySold: { $sum: "$items.quantity" },
-          revenue: {
-            $sum: {
-              $multiply: ["$items.price", "$items.quantity"],
+      const topItems = await orderCollection
+        .aggregate([
+          { $match: { paymentStatus: "paid" } },
+          { $unwind: "$items" },
+          {
+            $group: {
+              _id: "$items.itemId",
+              name: { $first: "$items.name" },
+              quantitySold: { $sum: "$items.quantity" },
+              revenue: {
+                $sum: {
+                  $multiply: ["$items.price", "$items.quantity"],
+                },
+              },
             },
           },
-        },
-      },
-      { $sort: { quantitySold: -1, revenue: -1 } },
-      { $limit: 5 },
-    ])
-    .toArray();
+          { $sort: { quantitySold: -1, revenue: -1 } },
+          { $limit: 5 },
+        ])
+        .toArray();
 
-  const payload = {
-    items: topItems.map((item) => {
-      const metadata = itemMap.get(item._id);
       return {
-        id: item._id,
-        name: item.name,
-        quantitySold: item.quantitySold,
-        revenue: item.revenue,
-        image: metadata?.image || "",
-        description: metadata?.description || "",
+        items: topItems.map((item) => {
+          const metadata = itemMap.get(item._id);
+          return {
+            id: item._id,
+            name: item.name,
+            quantitySold: item.quantitySold,
+            revenue: item.revenue,
+            image: metadata?.image || "",
+            description: metadata?.description || "",
+          };
+        }),
       };
-    }),
-  };
+    },
+  });
 
-  await setCache(cacheKey, payload, ADMIN_TOP_ITEMS_TTL);
-
-  return {
-    ...payload,
-    cached: false,
-  };
+  return { ...data, cached };
 };
 
 export const fetchOrdersTrend = async (days = 7) => {
   const normalizedDays = Math.max(7, Math.min(days, 30));
-  const cacheKey = `admin:orders-trend:${normalizedDays}`;
-  const cached = await getCache<Record<string, unknown>>(cacheKey);
+  const { data, cached } = await withCache({
+    key: `admin:orders-trend:${normalizedDays}`,
+    ttl: CACHE_TTL.trends,
+    fetcher: async () => {
+      const { start } = buildTrendRange(normalizedDays);
+      const orderCollection = await getOrderCollection();
 
-  if (cached) {
-    return {
-      ...cached,
-      cached: true,
-    };
-  }
-
-  const { start } = buildTrendRange(normalizedDays);
-  const orderCollection = await getOrderCollection();
-
-  const trendDocs = await orderCollection
-    .aggregate<Document>([
-      {
-        $match: {
-          paymentStatus: "paid",
-          createdAt: { $gte: start },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" },
+      const trendDocs = await orderCollection
+        .aggregate<Document>([
+          {
+            $match: {
+              paymentStatus: "paid",
+              createdAt: { $gte: start },
+            },
           },
-          revenue: { $sum: "$totalAmount" },
-          orders: { $sum: 1 },
-        },
-      },
-      {
-        $sort: {
-          "_id.year": 1,
-          "_id.month": 1,
-          "_id.day": 1,
-        },
-      },
-    ])
-    .toArray();
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" },
+                day: { $dayOfMonth: "$createdAt" },
+              },
+              revenue: { $sum: "$totalAmount" },
+              orders: { $sum: 1 },
+            },
+          },
+          {
+            $sort: {
+              "_id.year": 1,
+              "_id.month": 1,
+              "_id.day": 1,
+            },
+          },
+        ])
+        .toArray();
 
-  const trendMap = new Map(
-    trendDocs.map((doc) => [
-      `${doc._id.year}-${doc._id.month}-${doc._id.day}`,
-      doc,
-    ]),
-  );
+      const trendMap = new Map(trendDocs.map((doc) => [`${doc._id.year}-${doc._id.month}-${doc._id.day}`, doc]));
 
-  const trend = Array.from({ length: normalizedDays }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-    const entry = trendMap.get(key);
+      const trend = Array.from({ length: normalizedDays }, (_, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        const entry = trendMap.get(key);
 
-    return {
-      label: formatDayLabel(date),
-      revenue: Number(entry?.revenue || 0),
-      orders: Number(entry?.orders || 0),
-    };
+        return {
+          label: formatDayLabel(date),
+          revenue: Number(entry?.revenue || 0),
+          orders: Number(entry?.orders || 0),
+        };
+      });
+
+      return {
+        days: normalizedDays,
+        trend,
+      };
+    },
   });
 
-  const payload = {
-    days: normalizedDays,
-    trend,
-  };
-
-  await setCache(cacheKey, payload, ADMIN_TREND_TTL);
-
-  return {
-    ...payload,
-    cached: false,
-  };
+  return { ...data, cached };
 };

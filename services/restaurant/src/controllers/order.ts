@@ -7,6 +7,7 @@ import Order from "../models/Order.js";
 import Restaurant, { IRestaurant } from "../models/Restaurant.js";
 import axios from "axios";
 import { publishEvent } from "../config/order.publisher.js";
+import mongoose from "mongoose";
 
 export const createOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
   const user = req.user;
@@ -18,6 +19,11 @@ export const createOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
   }
 
 const { paymentMethod, addressId } = req.body;
+if (!["razorpay", "stripe"].includes(paymentMethod)) {
+  return res.status(400).json({
+    message: "Invalid payment method",
+  });
+}
 if (!addressId) {
   return res.status(400).json({
     message: "Address is required",
@@ -118,15 +124,17 @@ const orderItems = cartItems.map((cart)=>{
     quantity:cart.quantity,
   }
 });
-const deliveryFee = subtotal < 250 ? 49 : 0;
+const customerDeliveryFee = subtotal < 250 ? 49 : 0;
 const platformFee = 7;
-const totalAmount = subtotal + deliveryFee + platformFee;
+const totalAmount = subtotal + customerDeliveryFee + platformFee;
 
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
 const [longitude, latitude] = address.location.coordinates;
 
 const riderAmount=Math.ceil(distance)*17;
+const platformSubsidy = Math.max(0, riderAmount - customerDeliveryFee);
+const estimatedPlatformRevenue = platformFee + customerDeliveryFee - riderAmount;
 
 const order = await Order.create({
   userId: user._id.toString(),
@@ -134,10 +142,13 @@ const order = await Order.create({
   restaurantName: restaurant.name,
   distance,
   riderAmount,
+  customerDeliveryFee,
+  platformSubsidy,
+  estimatedPlatformRevenue,
   riderId: null,
   items: orderItems,
   subtotal,
-  deliveryFee,
+  deliveryFee: customerDeliveryFee,
   platformFee,
   totalAmount,
   addressId: address._id.toString(),
@@ -209,6 +220,17 @@ export const fetchRestaurantOrders = TryCatch(
 }
 
 const  limit  = req.query.limit? Number(req.query.limit) : 0;
+
+const restaurant = await Restaurant.findOne({
+  _id: restaurantId,
+  ownerId: user._id.toString(),
+});
+
+if (!restaurant) {
+  return res.status(403).json({
+    message: "You are not allowed to view these orders",
+  });
+}
 
 const orders = await Order.find({
   restaurantId,
@@ -371,7 +393,13 @@ export const assignRiderToOrder = TryCatch(async (req, res) => {
 
   const order = await Order.findById(orderId);
 
-  if (order?.riderId !== null) {
+  if (!order) {
+    return res.status(404).json({
+      message: "Order not found",
+    });
+  }
+
+  if (order.riderId !== null) {
     return res.status(400).json({
       message: "Order Already taken",
     });
@@ -386,12 +414,17 @@ export const assignRiderToOrder = TryCatch(async (req, res) => {
   },
   { returnDocument:'after' }
 );
+if (!orderUpdated) {
+  return res.status(409).json({
+    message: "Order already taken",
+  });
+}
 await axios.post(
   `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
   {
     event: "order:rider_assigned",
     room: `user:${order.userId}`,
-    payload: order,
+    payload: orderUpdated,
   },
   {
     headers: {
@@ -405,7 +438,7 @@ await axios.post(
   {
     event: "order:rider_assigned",
     room: `restaurant:${order.restaurantId}`,
-    payload: order,
+    payload: orderUpdated,
   },
   {
     headers: {
@@ -434,6 +467,12 @@ export const getCurrentOrdersForRider = TryCatch(async (req, res) => {
       message: "Rider id is required",
     });
   }
+
+  if (typeof riderId !== "string" || !mongoose.Types.ObjectId.isValid(riderId)) {
+    return res.status(400).json({
+      message: "Invalid rider id",
+    });
+  }
   const order = await Order.findOne({
   riderId,
   status: { $ne: "delivered" },
@@ -448,6 +487,97 @@ if (!order) {
 res.json(order);
 });
 
+export const getAvailableOrdersForRider = TryCatch(async (req, res) => {
+  if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
+    return res.status(403).json({
+      message: "Forbidden",
+    });
+  }
+
+  const latitude = Number(req.query.latitude);
+  const longitude = Number(req.query.longitude);
+  const maxDistance = Number(req.query.maxDistance || 5000);
+
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    return res.status(400).json({
+      message: "latitude and longitude are required",
+    });
+  }
+
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const haversineDistanceInMeters = ({
+    lat1,
+    lon1,
+    lat2,
+    lon2,
+  }: {
+    lat1: number;
+    lon1: number;
+    lat2: number;
+    lon2: number;
+  }) => {
+    const earthRadius = 6371000;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRadians(lat1)) *
+        Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const orders = await Order.find({
+    paymentStatus: "paid",
+    status: "ready_for_rider",
+    riderId: null,
+  }).select("_id restaurantId");
+
+  const uniqueRestaurantIds = [...new Set(orders.map((order) => order.restaurantId))];
+  const restaurants = await Restaurant.find({
+    _id: { $in: uniqueRestaurantIds },
+  }).select("_id autoLocation");
+
+  const restaurantMap = new Map(
+    restaurants.map((restaurant) => [restaurant._id.toString(), restaurant.autoLocation]),
+  );
+
+  const availableOrders = orders
+    .map((order) => {
+      const location = restaurantMap.get(order.restaurantId.toString());
+      if (!location?.coordinates) {
+        return null;
+      }
+
+      const [restaurantLongitude, restaurantLatitude] = location.coordinates;
+      const distance = haversineDistanceInMeters({
+        lat1: latitude,
+        lon1: longitude,
+        lat2: restaurantLatitude,
+        lon2: restaurantLongitude,
+      });
+
+      if (distance > maxDistance) {
+        return null;
+      }
+
+      return {
+        orderId: order._id.toString(),
+        restaurantId: order.restaurantId.toString(),
+        distance: Math.round(distance),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a?.distance || 0) - (b?.distance || 0));
+
+  res.json({
+    count: availableOrders.length,
+    orders: availableOrders,
+  });
+});
+
 export const updateOrderStatusRider = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -455,13 +585,37 @@ export const updateOrderStatusRider = TryCatch(async (req, res) => {
     });
   }
 
-  const { orderId } = req.params;
+  const orderId = typeof req.params.orderId === "string" ? req.params.orderId : null;
+  if (!orderId) {
+    return res.status(400).json({
+      message: "Order id is required",
+    });
+  }
+  const riderId = req.headers["x-rider-id"];
 
-  const order = await Order.findById(orderId);
+  if (typeof riderId !== "string" || !riderId) {
+    return res.status(400).json({
+      message: "Rider id is required",
+    });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    return res.status(400).json({
+      message: "Invalid order id",
+    });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(riderId)) {
+    return res.status(400).json({
+      message: "Invalid rider id",
+    });
+  }
+
+  const order = await Order.findOne({ _id: orderId, riderId });
 
   if (!order) {
   return res.status(404).json({
-    message: "Order not found",
+    message: "Assigned order not found",
   });
 }
 
