@@ -2,12 +2,15 @@ import axios from "axios";
 import { adminService } from "../main";
 import { toast } from "react-hot-toast";
 import VerificationBadge from "./VerificationBadge";
+import Button from "./ui/Button";
+import Card from "./ui/Card";
+import type { PendingRestaurant } from "../types";
 
 const AdminRestaurantCard = ({
   restaurant,
   onVerify,
 }: {
-  restaurant: any;
+  restaurant: PendingRestaurant;
   onVerify: () => void;
 }) => {
   const verify = async () => {
@@ -24,13 +27,13 @@ const AdminRestaurantCard = ({
 
       toast.success("Restaurant verified");
       onVerify();
-    } catch (error) {
+    } catch {
       toast.error("Failed to verify Restaurant");
     }
   };
 
   return (
-  <div className="space-y-3 rounded-[24px] border border-white/10 bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
+  <Card className="space-y-3 p-4">
     <img
       src={restaurant.image}
       className="h-40 w-full rounded-2xl object-cover"
@@ -48,13 +51,10 @@ const AdminRestaurantCard = ({
     <p className="text-sm text-neutral-300">
       {restaurant.autoLocation?.formattedAddress}
     </p>
-    <button
-  className="w-full rounded-2xl bg-[#facc15] py-2.5 font-semibold text-[#0f0f0f] transition hover:brightness-110"
-  onClick={verify}
->
-  Verify Restaurant
-</button>
-  </div>
+    <Button fullWidth onClick={verify}>
+      Verify Restaurant
+    </Button>
+  </Card>
 );
 };
 

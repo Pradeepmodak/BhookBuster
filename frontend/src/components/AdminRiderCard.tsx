@@ -2,22 +2,15 @@ import axios from "axios";
 import { adminService } from "../main";
 import { toast } from "react-hot-toast";
 import VerificationBadge from "./VerificationBadge";
-
-interface IRider {
-  _id: string;
-  phoneNumber: string;
-  aadharNumber: string;
-  drivingLicenseNumber: string;
-  picture: string;
-  isVerified: boolean;
-  isAvailable: boolean;
-}
+import Button from "./ui/Button";
+import Card from "./ui/Card";
+import type { PendingRider } from "../types";
 
 const AdminRiderCard = ({
   rider,
   onVerify,
 }: {
-  rider: IRider;
+  rider: PendingRider;
   onVerify: () => void;
 }) => {
   const verify = async () => {
@@ -34,13 +27,13 @@ const AdminRiderCard = ({
 
       toast.success("Rider verified");
       onVerify();
-    } catch (error) {
+    } catch {
       toast.error("Failed to verify Rider");
     }
   };
 
   return (
-    <div className="space-y-3 rounded-[24px] border border-white/10 bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
+    <Card className="space-y-3 p-4">
       <img
         src={rider.picture}
         className="h-40 w-full rounded-2xl object-cover"
@@ -62,13 +55,10 @@ const AdminRiderCard = ({
       </p>
       
 
-      <button
-        className="w-full rounded-2xl bg-[#facc15] py-2.5 font-semibold text-[#0f0f0f] transition hover:brightness-110"
-        onClick={verify}
-      >
+      <Button fullWidth onClick={verify}>
         Verify Rider
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 };
 

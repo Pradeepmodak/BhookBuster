@@ -55,22 +55,22 @@ const Login = () => {
               Premium delivery platform
             </div>
             <h1 className="mt-8 text-4xl font-semibold tracking-tight md:text-5xl">
-              Welcome back to a sharper food-delivery experience.
+              Welcome to BhookBuster operations and ordering.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-neutral-300">
-              Sign in to track live orders, manage your account, and explore a premium BhookBuster experience with real-time updates.
+              Sign in to place orders as a customer, run fulfillment as a restaurant, or deliver as a rider with realtime order updates.
             </p>
           </div>
 
           <div className="relative mt-10 grid gap-4 md:grid-cols-2">
             {[
               {
-                title: "Realtime order tracking",
-                description: "Stay updated as restaurants and riders move through each order stage.",
+                title: "End-to-end order lifecycle",
+                description: "Track each stage from placed to delivered across customer, seller, and rider flows.",
               },
               {
-                title: "Safer auth flow",
-                description: "Google OAuth is wired into the backend service for a simpler sign-in path.",
+                title: "Single sign-in, multi-role access",
+                description: "One Google login lets you continue as customer, rider, or restaurant owner.",
               },
             ].map((item) => (
               <div key={item.title} className="rounded-[26px] border border-white/10 bg-white/5 p-5">
@@ -91,7 +91,7 @@ const Login = () => {
             <div className="text-center">
               <h2 className="text-3xl font-semibold text-white">BhookBuster Prime</h2>
               <p className="mt-3 text-sm leading-6 text-neutral-400">
-                Login or sign up to continue with your orders, saved addresses, and personalized delivery flow.
+                Continue into the BhookBuster platform to order, manage restaurant operations, or handle deliveries.
               </p>
             </div>
 

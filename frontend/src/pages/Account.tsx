@@ -17,7 +17,7 @@ const Account = () => {
     try {
       await fetchUser();
       toast.success("Profile synced with server");
-    } catch (_error) {
+    } catch {
       toast.error("Failed to sync profile");
     } finally {
       setRefreshing(false);

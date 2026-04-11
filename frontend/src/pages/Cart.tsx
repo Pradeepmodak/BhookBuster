@@ -44,7 +44,7 @@ const Cart = () => {
         },
       );
       await fetchCart();
-    } catch (_error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setLoadingItemId(null);
@@ -64,7 +64,7 @@ const Cart = () => {
         },
       );
       await fetchCart();
-    } catch (_error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setLoadingItemId(null);
@@ -84,7 +84,7 @@ const Cart = () => {
       });
       toast.success("Cart cleared successfully");
       await fetchCart();
-    } catch (_error) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setClearingCart(false);

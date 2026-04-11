@@ -13,9 +13,10 @@ import L from "leaflet";
 import { LuLocateFixed } from "react-icons/lu";
 import { BiLoader, BiPlus, BiTrash } from "react-icons/bi";
 import { motion } from "framer-motion";
+import type { AddressRecord } from "../types";
 
 // ✅ Fix Leaflet icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -26,11 +27,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // ✅ Types
-interface Address {
-  _id: string;
-  formattedAddress: string;
-  mobile: number;
-}
+type Address = AddressRecord;
 
 // 📍 Click picker
 const LocationPicker = ({
@@ -111,8 +108,8 @@ const AddressPage = () => {
 
         const data = await res.json();
         setFormattedAddress(data.display_name || "");
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
           toast.error("Failed to fetch address");
         }
       }

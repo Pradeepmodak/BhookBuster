@@ -73,7 +73,7 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
           });
           setCity(resolvedCity);
           setLoadingLocation(false);
-        } catch (error) {
+        } catch {
           setLocation({
             latitude,
             longitude,
@@ -122,6 +122,8 @@ async function fetchCart() {
         if(user && user.role==="customer"){
             fetchCart();
         }
+        // fetchCart depends on the current authenticated user only.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     },[user]);
 
     useEffect(()=>{
@@ -150,6 +152,7 @@ async function fetchCart() {
     </AppContext.Provider>
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppData=():AppContextType=>{
 const context=useContext(AppContext);
 if(!context){

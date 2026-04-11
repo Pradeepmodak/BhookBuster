@@ -1,17 +1,32 @@
 import axios from "axios";
+import { useState } from "react";
 import { riderService } from "../main";
 import toast from "react-hot-toast";
 import type { IOrder } from "../types";
 import { BiStore, BiMapPin, BiWallet, BiPhoneCall, BiNavigation, BiCheckCircle } from "react-icons/bi";
+import { getErrorMessage } from "../utils/http";
 
 interface Props {
   order: IOrder;
-  onStatusUpdate: () => void;
+  onStatusUpdate: (nextOrder: IOrder | null) => void;
 }
 
 const RiderCurrentOrder = ({ order, onStatusUpdate }: Props) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const nextStatus =
+    order.status === "rider_assigned"
+      ? "picked_up"
+      : order.status === "picked_up"
+        ? "delivered"
+        : null;
+
   const updateStatus = async () => {
+    if (!nextStatus || isUpdating) {
+      return;
+    }
+
     try {
+      setIsUpdating(true);
       await axios.put(
         `${riderService}/api/rider/order/update/${order._id}`,
         {},
@@ -23,9 +38,18 @@ const RiderCurrentOrder = ({ order, onStatusUpdate }: Props) => {
       );
 
       toast.success("Order status updated!");
-      onStatusUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update status");
+      onStatusUpdate(
+        nextStatus === "delivered"
+          ? null
+          : {
+              ...order,
+              status: nextStatus,
+            },
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update status"));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -102,20 +126,22 @@ const RiderCurrentOrder = ({ order, onStatusUpdate }: Props) => {
           {order.status === "rider_assigned" && (
             <button
               onClick={updateStatus}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#facc15] py-3.5 text-base font-bold text-[#0f0f0f] shadow-md transition-all hover:-translate-y-0.5 hover:brightness-110"
+              disabled={isUpdating}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#facc15] py-3.5 text-base font-bold text-[#0f0f0f] shadow-md transition-all hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <BiNavigation className="h-5 w-5 animate-pulse" />
-              I Have Picked Up The Order
+              {isUpdating ? "Updating..." : "I Have Picked Up The Order"}
             </button>
           )}
 
           {order.status === "picked_up" && (
             <button
               onClick={updateStatus}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-emerald-500"
+              disabled={isUpdating}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <BiCheckCircle className="h-5 w-5" />
-              Mark As Delivered
+              {isUpdating ? "Updating..." : "Mark As Delivered"}
             </button>
           )}
         </div>

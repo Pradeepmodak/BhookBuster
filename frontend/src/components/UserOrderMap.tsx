@@ -4,14 +4,9 @@ import * as L from "leaflet"; // core map library
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine"; // draws routes between points
 import { useEffect } from "react";
+import type { LeafletWithRouting } from "../utils/leafletRouting";
 
-// leaflet manual typescript declaration
-declare module "leaflet" {
-  namespace Routing {
-    function control(options: any): any;
-    function osrmv1(options?: any): any;
-  }
-}
+const routedLeaflet = L as LeafletWithRouting;
 const riderIcon = new L.DivIcon({
   html: "🛵💨",
   iconSize: [30, 30],
@@ -33,8 +28,8 @@ const Routing = ({
 
   // run when from and to changes
   useEffect(() => {
-    const control = L.Routing.control({
-      waypoints: [L.latLng(from), L.latLng(to)],
+    const control = routedLeaflet.Routing.control({
+      waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
       lineOptions: {
         styles: [{ color: "#E23744", weight: 5 }],
       },
@@ -42,7 +37,7 @@ const Routing = ({
       draggableWaypoints: false,
       show: false,
       createMarker: () => null,
-      router: L.Routing.osrmv1({
+      router: routedLeaflet.Routing.osrmv1({
         serviceUrl: "https://router.project-osrm.org/route/v1",
       }),
     }).addTo(map);

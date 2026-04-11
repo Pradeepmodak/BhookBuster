@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { riderService } from "../main";
 import toast from "react-hot-toast";
-import { BiX, BiUpload } from "react-icons/bi";
+import { BiUpload } from "react-icons/bi";
 import { useAppData } from "../context/AppContext";
+import Button from "./ui/Button";
+import Input from "./ui/Input";
+import Modal from "./ui/Modal";
+import { FiCreditCard, FiPhone, FiUser } from "react-icons/fi";
+import { getErrorMessage } from "../utils/http";
 
 interface Props {
   isOpen: boolean;
@@ -11,16 +16,35 @@ interface Props {
   onSuccess: () => void;
   currentName: string;
   currentPhone: string;
+  currentAadharNumber: string;
+  currentDrivingLicenseNumber: string;
 }
 
-const RiderEditProfile = ({ isOpen, onClose, onSuccess, currentName, currentPhone }: Props) => {
-  const { fetchUser } = useAppData(); // To refresh User model name
+const RiderEditProfile = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  currentName,
+  currentPhone,
+  currentAadharNumber,
+  currentDrivingLicenseNumber,
+}: Props) => {
+  const { fetchUser } = useAppData();
   const [name, setName] = useState(currentName);
   const [phoneNumber, setPhoneNumber] = useState(currentPhone);
+  const [aadharNumber, setAadharNumber] = useState(currentAadharNumber);
+  const [drivingLicenseNumber, setDrivingLicenseNumber] = useState(currentDrivingLicenseNumber);
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(currentName);
+    setPhoneNumber(currentPhone);
+    setAadharNumber(currentAadharNumber);
+    setDrivingLicenseNumber(currentDrivingLicenseNumber);
+    setImage(null);
+  }, [isOpen, currentName, currentPhone, currentAadharNumber, currentDrivingLicenseNumber]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +53,10 @@ const RiderEditProfile = ({ isOpen, onClose, onSuccess, currentName, currentPhon
     const formData = new FormData();
     if (name !== currentName) formData.append("name", name);
     if (phoneNumber !== currentPhone) formData.append("phoneNumber", phoneNumber);
+    if (aadharNumber !== currentAadharNumber) formData.append("aadharNumber", aadharNumber);
+    if (drivingLicenseNumber !== currentDrivingLicenseNumber) {
+      formData.append("drivingLicenseNumber", drivingLicenseNumber);
+    }
     if (image) formData.append("file", image);
 
     try {
@@ -41,75 +69,70 @@ const RiderEditProfile = ({ isOpen, onClose, onSuccess, currentName, currentPhon
       if (name !== currentName) await fetchUser(); // Update global auth context
       onSuccess();
       onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update profile");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update profile"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-lg font-bold text-gray-800">Edit Profile</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1 hover:bg-gray-100 transition"
-          >
-            <BiX className="h-6 w-6 text-gray-500" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-2 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone Number</label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-2 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Profile Picture (Optional)</label>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-6 hover:bg-gray-50 transition">
-              <BiUpload className="h-6 w-6 text-gray-400" />
-              <span className="text-sm text-gray-600">
-                {image ? image.name : "Click to upload new display picture"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => setImage(e.target.files?.[0] || null)}
-              />
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-4 w-full rounded-xl bg-emerald-600 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:bg-gray-400"
-          >
-            {loading ? "Saving Changes..." : "Save Profile"}
-          </button>
-        </form>
-      </div>
-    </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Edit rider profile"
+      description="Update your rider identity details without leaving the dashboard."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          icon={<FiUser size={16} />}
+        />
+        <Input
+          label="Phone Number"
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          required
+          icon={<FiPhone size={16} />}
+        />
+        <Input
+          label="Aadhaar Number"
+          type="text"
+          value={aadharNumber}
+          onChange={(e) => setAadharNumber(e.target.value)}
+          required
+          icon={<FiCreditCard size={16} />}
+        />
+        <Input
+          label="Driving Licence Number"
+          type="text"
+          value={drivingLicenseNumber}
+          onChange={(e) => setDrivingLicenseNumber(e.target.value)}
+          required
+          icon={<FiCreditCard size={16} />}
+        />
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-black/10 px-4 py-6 transition hover:border-[var(--color-accent)]/40 hover:bg-white/4">
+          <BiUpload className="h-6 w-6 text-[var(--color-accent)]" />
+          <span className="text-sm text-gray-300">
+            {image ? image.name : "Upload a refreshed rider profile picture"}
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+          />
+        </label>
+        <Button type="submit" disabled={loading} fullWidth>
+          {loading ? "Saving Changes..." : "Save Profile"}
+        </Button>
+      </form>
+    </Modal>
   );
 };
 

@@ -82,7 +82,7 @@ const Checkout = () => {
         },
       );
       return data;
-    } catch (_error) {
+    } catch {
       toast.error("Failed to create order");
       return null;
     } finally {
@@ -128,7 +128,7 @@ const Checkout = () => {
 
             toast.success("Payment successful");
             navigate(`/paymentsuccess/${response.razorpay_payment_id}`);
-          } catch (_error) {
+          } catch {
             toast.error("Payment verification failed");
           }
         },
@@ -142,7 +142,7 @@ const Checkout = () => {
       }).Razorpay;
       const razorpay = new RazorpayConstructor(options);
       razorpay.open();
-    } catch (_error) {
+    } catch {
       toast.error("Payment failed to initialize");
     } finally {
       setLoadingRazorpay(false);
@@ -163,7 +163,7 @@ const Checkout = () => {
       } else {
         toast.error("Failed to initiate Stripe payment");
       }
-    } catch (_error) {
+    } catch {
       toast.error("Payment failed");
     } finally {
       setLoadingStripe(false);

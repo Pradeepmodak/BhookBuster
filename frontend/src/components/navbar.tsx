@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { CgShoppingCart } from "react-icons/cg";
 import { BiMapPin, BiSearch } from "react-icons/bi";
 import { FiClock } from "react-icons/fi";
+import Button from "./ui/Button";
+import Card from "./ui/Card";
+import Input from "./ui/Input";
 
 const Navbar = () => {
   const { isAuth, city, quantity } = useAppData();
@@ -51,18 +54,12 @@ const Navbar = () => {
           </Link>
 
           {isAuth ? (
-            <Link
-              to="/account"
-              className="rounded-full border border-[#facc15]/30 bg-[#facc15]/10 px-4 py-2 text-sm font-medium text-[#facc15] transition hover:bg-[#facc15] hover:text-[#0f0f0f]"
-            >
-              Profile
+            <Link to="/account">
+              <Button variant="secondary" size="sm">Profile</Button>
             </Link>
           ) : (
-            <Link
-              to="/login"
-              className="rounded-full border border-[#facc15]/30 bg-[#facc15]/10 px-4 py-2 text-sm font-medium text-[#facc15] transition hover:bg-[#facc15] hover:text-[#0f0f0f]"
-            >
-              Login
+            <Link to="/login">
+              <Button variant="secondary" size="sm">Login</Button>
             </Link>
           )}
         </div>
@@ -71,26 +68,23 @@ const Navbar = () => {
       {isHomePage && (
         <div className="border-t border-white/10 px-4 py-4">
           <div className="mx-auto grid max-w-7xl gap-3 lg:grid-cols-[1.1fr_1.8fr_auto]">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#171717] px-4 py-3 text-[#d4d4d4]">
+            <Card className="flex items-center gap-3 rounded-2xl px-4 py-3 text-[#d4d4d4]">
               <BiMapPin className="h-5 w-5 text-[#facc15]" />
               <span className="truncate text-sm font-medium">{city}</span>
-            </div>
+            </Card>
 
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#171717] px-4">
-              <BiSearch className="h-5 w-5 text-[#facc15]" />
-              <input
-                type="text"
-                placeholder="Search for restaurant"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-neutral-500"
-              />
-            </div>
+            <Input
+              icon={<BiSearch className="h-5 w-5" />}
+              placeholder="Search for restaurant"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="rounded-2xl px-4"
+            />
 
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#171717] px-4 py-3 text-sm text-neutral-300">
+            <Card className="flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm text-neutral-300">
               <FiClock className="text-[#facc15]" />
               Fastest delivery first
-            </div>
+            </Card>
           </div>
         </div>
       )}

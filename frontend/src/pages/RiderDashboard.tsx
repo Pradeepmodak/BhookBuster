@@ -13,6 +13,11 @@ import RiderOrderMap from "../components/RiderOrderMap";
 import VerificationBadge from "../components/VerificationBadge";
 import RiderEarnings from "../components/RiderEarnings";
 import RiderEditProfile from "../components/RiderEditProfile";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Card from "../components/ui/Card";
+import { FiCreditCard, FiLogOut, FiPhone } from "react-icons/fi";
+import { getErrorMessage } from "../utils/http";
 
 interface IRider {
   _id: string;
@@ -25,7 +30,7 @@ interface IRider {
 }
 
 const RiderDashboard = () => {
-  const { user } = useAppData();
+  const { user, setIsAuth, setUser } = useAppData();
   const { socket } = useSocket();
   const [profile, setProfile] = useState<IRider | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +60,7 @@ const RiderDashboard = () => {
       audioRef.current.currentTime = 0;
       setAudioUnlocked(true);
       toast.success("Sound enabled");
-    } catch (_error) {
+    } catch {
       toast.error("Tap again to enable sound");
     }
   };
@@ -86,8 +91,8 @@ const RiderDashboard = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setProfile(data || null);
-    } catch (_error) {
+      setProfile(data?.rider || null);
+    } catch {
       setProfile(null);
     } finally {
       setLoading(false);
@@ -107,6 +112,24 @@ const RiderDashboard = () => {
     }
   };
 
+  const handleCurrentOrderStatusUpdate = (nextOrder: IOrder | null) => {
+    setCurrentOrder(nextOrder);
+  };
+
+  const fetchDeliveryQueue = async () => {
+    try {
+      const { data } = await axios.get(`${riderService}/api/rider/order/queue`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const queuedOrderIds = (data?.queue || []).map((entry: { orderId: string }) => entry.orderId);
+      setIncomingOrders(queuedOrderIds);
+    } catch {
+      // Queue polling is a resilience fallback, so we avoid noisy UI errors here.
+    }
+  };
+
   useEffect(() => {
     if (user?.role === "rider") fetchProfile();
     else setLoading(false);
@@ -118,35 +141,52 @@ const RiderDashboard = () => {
     }
   }, [profile]);
 
+  useEffect(() => {
+    if (!profile?.isAvailable || currentOrder) return;
+
+    fetchDeliveryQueue();
+    const interval = setInterval(fetchDeliveryQueue, 5000);
+    return () => clearInterval(interval);
+  }, [profile?.isAvailable, currentOrder]);
+
   const toggleAvailability = async () => {
     if (!navigator.geolocation) {
       toast.error("Location Access Required");
       return;
     }
     setToggling(true);
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        await axios.patch(
-          `${riderService}/api/rider/toggle`,
-          {
-            isAvailable: !profile?.isAvailable,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { data } = await axios.patch(
+            `${riderService}/api/rider/toggle`,
+            {
+              isAvailable: !profile?.isAvailable,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
             },
-          },
-        );
-        toast.success(profile?.isAvailable ? "You are offline" : "You are online");
-        fetchProfile();
-      } catch (error: any) {
-        toast.error(error?.response?.data?.message || "Failed to toggle availability");
-      } finally {
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
+          );
+          if (data?.rider) {
+            setProfile(data.rider);
+          }
+          toast.success(data?.message || (profile?.isAvailable ? "You are offline" : "You are online"));
+          fetchProfile();
+        } catch (error) {
+          toast.error(getErrorMessage(error, "Failed to toggle availability"));
+        } finally {
+          setToggling(false);
+        }
+      },
+      () => {
+        toast.error("Unable to read your location");
         setToggling(false);
-      }
-    });
+      },
+    );
   };
 
   const handleSubmit = async () => {
@@ -156,29 +196,42 @@ const RiderDashboard = () => {
     }
 
     setSubmitting(true);
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const formData = new FormData();
-      formData.append("phoneNumber", phoneNumber);
-      formData.append("aadharNumber", aadharNumber);
-      formData.append("drivingLicenseNumber", drivingLicenseNumber);
-      formData.append("latitude", pos.coords.latitude.toString());
-      formData.append("longitude", pos.coords.longitude.toString());
-      if (image) formData.append("file", image);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const formData = new FormData();
+        formData.append("phoneNumber", phoneNumber);
+        formData.append("aadharNumber", aadharNumber);
+        formData.append("drivingLicenseNumber", drivingLicenseNumber);
+        formData.append("latitude", pos.coords.latitude.toString());
+        formData.append("longitude", pos.coords.longitude.toString());
+        if (image) formData.append("file", image);
 
-      try {
-        const { data } = await axios.post(`${riderService}/api/rider/new`, formData, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        toast.success(data.message);
-        fetchProfile();
-      } catch (error: any) {
-        toast.error(error?.response?.data?.message || "Failed to submit profile");
-      } finally {
+        try {
+          const { data } = await axios.post(`${riderService}/api/rider/new`, formData, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          toast.success(data.message);
+          fetchProfile();
+        } catch (error) {
+          toast.error(getErrorMessage(error, "Failed to submit profile"));
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      () => {
+        toast.error("Unable to read your location");
         setSubmitting(false);
-      }
-    });
+      },
+    );
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setIsAuth(false);
+    window.location.href = "/login";
   };
 
   if (user?.role !== "rider") {
@@ -194,17 +247,41 @@ const RiderDashboard = () => {
       <div className="min-h-screen bg-[#0f0f0f] px-4 py-6 text-white">
         <div className="mx-auto max-w-lg space-y-5 rounded-[28px] border border-white/10 bg-[#121212] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
           <h1 className="text-2xl font-semibold">Create Rider Profile</h1>
-          <input type="number" placeholder="Aadhar Number" value={aadharNumber} onChange={(e) => setAadharNumber(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#171717] px-4 py-3 text-sm outline-none" />
-          <input type="number" placeholder="Contact number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#171717] px-4 py-3 text-sm outline-none" />
-          <input type="text" placeholder="Driving Licence" value={drivingLicenseNumber} onChange={(e) => setDrivingLicenseNumber(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#171717] px-4 py-3 text-sm outline-none" />
+          <p className="text-sm leading-6 text-neutral-400">
+            Phone number, Aadhaar number, and driving licence number are required before your rider account can be verified.
+          </p>
+          <Input
+            label="Phone Number"
+            type="tel"
+            placeholder="Enter contact number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            icon={<FiPhone size={16} />}
+          />
+          <Input
+            label="Aadhaar Number"
+            type="text"
+            placeholder="Enter Aadhaar number"
+            value={aadharNumber}
+            onChange={(e) => setAadharNumber(e.target.value)}
+            icon={<FiCreditCard size={16} />}
+          />
+          <Input
+            label="Driving Licence Number"
+            type="text"
+            placeholder="Enter driving licence number"
+            value={drivingLicenseNumber}
+            onChange={(e) => setDrivingLicenseNumber(e.target.value)}
+            icon={<FiCreditCard size={16} />}
+          />
           <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[#171717] p-4 text-sm text-neutral-300 hover:bg-white/5">
             <BiUpload className="h-5 w-5 text-[#facc15]" />
             {image ? image.name : "Upload your image"}
             <input type="file" accept="image/*" hidden onChange={(e) => setImage(e.target.files?.[0] || null)} />
           </label>
-          <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-2xl bg-[#facc15] px-4 py-3 text-sm font-semibold text-[#0f0f0f] hover:brightness-110 disabled:opacity-50">
-            {submitting ? "Submitting..." : "Add Profile"}
-          </button>
+          <Button onClick={handleSubmit} disabled={submitting} fullWidth>
+            {submitting ? "Submitting..." : "Create Rider Profile"}
+          </Button>
         </div>
       </div>
     );
@@ -229,13 +306,29 @@ const RiderDashboard = () => {
 
         <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-4">
-            <div className="relative rounded-[28px] border border-white/10 bg-[#121212] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-              <button onClick={() => setIsEditModalOpen(true)} className="absolute right-4 top-4 text-xs font-semibold text-[#facc15]">
-                Edit Profile
-              </button>
+            <Card className="relative p-5">
+              <div className="absolute right-4 top-4 flex gap-2">
+                <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-semibold text-[#facc15]">
+                  Edit Profile
+                </button>
+                <button onClick={handleLogout} className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-300 hover:text-white">
+                  <FiLogOut size={12} />
+                  Logout
+                </button>
+              </div>
               <img src={profile.picture} className="mx-auto h-24 w-24 rounded-full object-cover" alt="" />
               <p className="mt-3 text-center text-xl font-semibold">{user?.name}</p>
               <p className="text-center text-sm text-neutral-400">{profile.phoneNumber}</p>
+              <div className="mt-4 grid gap-2 rounded-[20px] border border-white/10 bg-black/20 p-4 text-sm text-neutral-300">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-neutral-500">Aadhaar</span>
+                  <span>{profile.aadharNumber}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-neutral-500">Driving licence</span>
+                  <span>{profile.drivingLicenseNumber}</span>
+                </div>
+              </div>
               <div className="mt-3 flex justify-center gap-2">
                 <VerificationBadge isVerified={profile.isVerified} size={16} />
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-200">
@@ -260,7 +353,7 @@ const RiderDashboard = () => {
                   {toggling ? "Updating..." : profile.isAvailable ? "Go Offline" : "Go Online"}
                 </button>
               )}
-            </div>
+            </Card>
 
             <div className="flex rounded-2xl bg-[#171717] p-1">
               <button
@@ -306,16 +399,27 @@ const RiderDashboard = () => {
 
               {currentOrder && (
                 <div className="space-y-4">
-                  <RiderCurrentOrder order={currentOrder} onStatusUpdate={fetchCurrentOrder} />
+                  <RiderCurrentOrder order={currentOrder} onStatusUpdate={handleCurrentOrderStatusUpdate} />
                   <RiderOrderMap order={currentOrder} />
                 </div>
               )}
 
               {profile.isAvailable && !currentOrder && incomingOrders.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-[28px] border border-white/10 bg-[#121212] py-16 text-center">
-                  <div className="mb-3 h-12 w-12 rounded-full bg-[#facc15]/10" />
-                  <p className="font-medium text-white">Looking for nearby orders...</p>
-                  <p className="mt-1 text-sm text-neutral-400">Keep the app open to receive alerts.</p>
+                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_34%),linear-gradient(180deg,#141414,#101010)] px-6 py-14 text-center shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
+                  <div className="pointer-events-none absolute inset-x-10 top-0 h-24 rounded-full bg-[#facc15]/8 blur-3xl" />
+                  <div className="relative flex flex-col items-center justify-center">
+                    <div className="rider-wave-shell mb-6">
+                      <div className="rider-wave-ring" />
+                      <div className="rider-wave-ring rider-wave-ring--delay" />
+                      <div className="rider-wave-core">
+                        <div className="h-3.5 w-3.5 rounded-full bg-[#161616]" />
+                      </div>
+                    </div>
+                    <p className="text-lg font-semibold text-white">Looking for nearby orders...</p>
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-neutral-400">
+                      Keep the app open to receive alerts. Your rider presence is actively broadcasting for nearby delivery requests.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -331,6 +435,8 @@ const RiderDashboard = () => {
             onSuccess={fetchProfile}
             currentName={user.name}
             currentPhone={profile.phoneNumber}
+            currentAadharNumber={profile.aadharNumber}
+            currentDrivingLicenseNumber={profile.drivingLicenseNumber}
           />
         )}
       </div>

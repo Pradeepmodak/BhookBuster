@@ -7,6 +7,7 @@ import uploadFile from "../middlewares/multer.js";
 import MenuItems from "../models/MenuItems.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { fetchRestaurantMenuItems } from "../services/catalog.js";
+import { deleteCache } from "../cache/redis.js";
 
 
 export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -58,6 +59,8 @@ const item = await MenuItems.create({
     isAvailable:true
 
 })
+await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
+await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
 res.status(201).json({
     message:"Item added Successfully",
     item,
@@ -99,6 +102,8 @@ if(!restaurant){
 }
 
 await item.deleteOne();
+await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
+await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
 
 res.status(200).json({
     message:"Menu item deleted successfully",
@@ -132,6 +137,8 @@ if(!restaurant){
 
 item.isAvailable=!item.isAvailable;
 await item.save();
+await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
+await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
 res.status(200).json({
 message:`Item Marked as ${item.isAvailable ? "available" : "unavailable"}`,
 item,

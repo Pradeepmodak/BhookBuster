@@ -1,11 +1,15 @@
 import axios from "axios";
+import { useEffect, useState } from "react";
+import { FiCheckCircle, FiClock, FiMapPin, FiPackage, FiRefreshCcw } from "react-icons/fi";
 import type { IOrder } from "../types";
 import { ORDER_ACTIONS } from "../utils/orderflow";
 import { restaurantService } from "../main";
-import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import Card from "./ui/Card";
+import Button from "./ui/Button";
+import { getErrorMessage } from "../utils/http";
 
-interface props {
+interface Props {
   order: IOrder;
   onStatusUpdate: () => void;
 }
@@ -13,298 +17,175 @@ interface props {
 const statusConfig = (status: string) => {
   switch (status) {
     case "placed":
-      return { bg: "#c9a84c22", border: "#c9a84c66", color: "#c9a84c", dot: "#c9a84c" };
+      return {
+        accent: "bg-[#facc15]",
+        chip: "border-[#facc15]/25 bg-[#facc15]/10 text-[#facc15]",
+      };
     case "accepted":
-      return { bg: "#f9731622", border: "#f9731666", color: "#fb923c", dot: "#f97316" };
+      return {
+        accent: "bg-orange-300",
+        chip: "border-orange-400/25 bg-orange-400/10 text-orange-300",
+      };
     case "preparing":
-      return { bg: "#3b82f622", border: "#3b82f666", color: "#60a5fa", dot: "#3b82f6" };
+      return {
+        accent: "bg-sky-300",
+        chip: "border-sky-400/25 bg-sky-400/10 text-sky-300",
+      };
     case "ready_for_rider":
-      return { bg: "#8b5cf622", border: "#8b5cf666", color: "#a78bfa", dot: "#8b5cf6" };
+      return {
+        accent: "bg-violet-300",
+        chip: "border-violet-400/25 bg-violet-400/10 text-violet-300",
+      };
     case "rider_assigned":
-      return { bg: "#06b6d422", border: "#06b6d466", color: "#22d3ee", dot: "#06b6d4" };
+      return {
+        accent: "bg-cyan-300",
+        chip: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300",
+      };
     case "picked_up":
-      return { bg: "#ec489922", border: "#ec489966", color: "#f472b6", dot: "#ec4899" };
+      return {
+        accent: "bg-pink-300",
+        chip: "border-pink-400/25 bg-pink-400/10 text-pink-300",
+      };
     case "delivered":
-      return { bg: "#22c55e22", border: "#22c55e66", color: "#4ade80", dot: "#22c55e" };
+      return {
+        accent: "bg-emerald-300",
+        chip: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+      };
     default:
-      return { bg: "#ffffff11", border: "#ffffff22", color: "#888070", dot: "#555" };
+      return {
+        accent: "bg-gray-300",
+        chip: "border-white/10 bg-white/5 text-gray-300",
+      };
   }
 };
 
-const OrderCard = ({ order, onStatusUpdate }: props) => {
+const OrderCard = ({ order, onStatusUpdate }: Props) => {
   const [loading, setLoading] = useState(false);
   const [retryVisible, setRetryVisible] = useState(false);
   const actions = ORDER_ACTIONS[order.status] || [];
-  const sc = statusConfig(order.status);
+  const status = statusConfig(order.status);
 
   useEffect(() => {
     if (order.status !== "ready_for_rider") {
       setRetryVisible(false);
       return;
     }
+
     const timer = setTimeout(() => setRetryVisible(true), 10000);
     return () => clearTimeout(timer);
   }, [order.status]);
 
-  const updateStatus = async (status: string) => {
+  const updateStatus = async (nextStatus: string) => {
     try {
       setLoading(true);
       setRetryVisible(false);
       await axios.put(
         `${restaurantService}/api/order/${order._id}`,
-        { status },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        { status: nextStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
       );
       toast.success("Order status updated");
-      onStatusUpdate?.();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update order status");
+      onStatusUpdate();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update order status"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
-        .bb-card {
-          background: linear-gradient(145deg, #1a1a14 0%, #111110 100%);
-          border: 1px solid #2a2a1e;
-          border-radius: 16px;
-          padding: 18px;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          font-family: 'DM Sans', sans-serif;
-          transition: border-color 0.2s, transform 0.2s;
-          position: relative;
-          overflow: hidden;
-        }
-        .bb-card::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 1px;
-          background: linear-gradient(to right, transparent, #c9a84c33, transparent);
-        }
-        .bb-card:hover {
-          border-color: #c9a84c44;
-          transform: translateY(-2px);
-        }
-
-        .bb-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .bb-order-id {
-          font-family: 'Syne', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          color: #888070;
-          letter-spacing: 0.5px;
-        }
-        .bb-status-badge {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-family: 'Syne', sans-serif;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.3px;
-          text-transform: capitalize;
-        }
-        .bb-status-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          animation: bb-pulse 2s infinite;
-        }
-        @keyframes bb-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-
-        .bb-items {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .bb-item-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 15px;
-          color: #f0ede6;
-          font-weight: 500;
-        }
-        .bb-item-qty {
-          background: #c9a84c18;
-          border: 1px solid #c9a84c33;
-          color: #c9a84c;
-          font-size: 11px;
-          font-weight: 700;
-          font-family: 'Syne', sans-serif;
-          padding: 2px 8px;
-          border-radius: 6px;
-        }
-
-        .bb-divider {
-          height: 1px;
-          background: linear-gradient(to right, #c9a84c22, transparent);
-        }
-
-        .bb-total-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .bb-total-label {
-          font-size: 12px;
-          color: #555040;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          font-family: 'Syne', sans-serif;
-        }
-        .bb-total-amount {
-          font-family: 'Syne', sans-serif;
-          font-size: 16px;
-          font-weight: 800;
-          color: #c9a84c;
-        }
-
-        .bb-payment-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          background: #22c55e15;
-          border: 1px solid #22c55e33;
-          color: #4ade80;
-          font-size: 11px;
-          font-weight: 600;
-          font-family: 'Syne', sans-serif;
-          padding: 3px 9px;
-          border-radius: 6px;
-        }
-
-        .bb-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-        .bb-action-btn {
-          background: linear-gradient(135deg, #c9a84c, #b8943e);
-          color: #0d0d0b;
-          border: none;
-          padding: 9px 16px;
-          border-radius: 10px;
-          font-family: 'Syne', sans-serif;
-          font-weight: 700;
-          font-size: 12px;
-          cursor: pointer;
-          transition: opacity 0.2s, transform 0.15s;
-          letter-spacing: 0.2px;
-          text-transform: capitalize;
-        }
-        .bb-action-btn:hover:not(:disabled) {
-          opacity: 0.9;
-          transform: translateY(-1px);
-        }
-        .bb-action-btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .bb-retry-btn {
-          width: 100%;
-          background: transparent;
-          border: 1px solid #c9a84c55;
-          color: #c9a84c;
-          padding: 9px;
-          border-radius: 10px;
-          font-family: 'Syne', sans-serif;
-          font-weight: 700;
-          font-size: 12px;
-          cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
-          letter-spacing: 0.2px;
-        }
-        .bb-retry-btn:hover {
-          background: #c9a84c18;
-          border-color: #c9a84c;
-        }
-      `}</style>
-
-      <div className="bb-card">
-        {/* Header */}
-        <div className="bb-card-header">
-          <span className="bb-order-id">Order #{order._id.slice(-6)}</span>
-          <span
-            className="bb-status-badge"
-            style={{ background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}
-          >
-            <span className="bb-status-dot" style={{ background: sc.dot }} />
+    <Card className="h-full border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.05))] p-5">
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">BhookBuster Order</p>
+            <p className="mt-2 text-lg font-semibold text-white">#{order._id.slice(-6)}</p>
+          </div>
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${status.chip}`}>
+            <span className={`h-2 w-2 rounded-full ${status.accent}`} />
             {order.status.replaceAll("_", " ")}
           </span>
         </div>
 
-        {/* Items */}
-        <div className="bb-items">
-          {order.items.map((item, i) => (
-            <div key={i} className="bb-item-row">
-              <span>{item.name}</span>
-              <span className="bb-item-qty">×{item.quantity}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="bb-divider" />
-
-        {/* Total */}
-        <div className="bb-total-row">
-          <span className="bb-total-label">Total</span>
-          <span className="bb-total-amount">₹{order.totalAmount}</span>
-        </div>
-
-        {/* Payment */}
-        <div>
-          <span className="bb-payment-badge">
-            ✓ {order.paymentStatus}
-          </span>
-        </div>
-
-        {/* Action buttons */}
-        {order.paymentStatus === "paid" && actions.length > 0 && (
-          <div className="bb-actions">
-            {actions.map((status) => (
-              <button
-                key={status}
-                disabled={loading}
-                onClick={() => updateStatus(status)}
-                className="bb-action-btn"
-              >
-                Mark as {status.replaceAll("_", " ")}
-              </button>
+        <div className="grid gap-3 rounded-[22px] border border-white/10 bg-black/20 p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <FiPackage className="text-[var(--color-accent)]" />
+            <span>{order.items.length} item{order.items.length === 1 ? "" : "s"} in this order</span>
+          </div>
+          <div className="space-y-2">
+            {order.items.map((item, index) => (
+              <div key={`${item.itemId}-${index}`} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-white">{item.name}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300">
+                  x{item.quantity}
+                </span>
+              </div>
             ))}
           </div>
-        )}
+        </div>
 
-        {/* Retry button */}
-        {order.status === "ready_for_rider" && retryVisible && (
-          <button
-            className="bb-retry-btn"
-            disabled={loading}
-            onClick={() => updateStatus("ready_for_rider")}
-          >
-            ↺ Retry Ready for Rider
-          </button>
-        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Total</p>
+            <p className="mt-2 text-xl font-semibold text-[var(--color-accent)]">Rs {order.totalAmount}</p>
+          </div>
+          <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Payment</p>
+            <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
+              <FiCheckCircle />
+              {order.paymentStatus}
+            </p>
+          </div>
+        </div>
+
+        {order.deliveryAddress?.formattedAddress ? (
+          <div className="flex items-start gap-3 rounded-[20px] border border-white/10 bg-black/20 p-4 text-sm text-gray-400">
+            <FiMapPin className="mt-0.5 shrink-0 text-[var(--color-accent)]" />
+            <span>{order.deliveryAddress.formattedAddress}</span>
+          </div>
+        ) : null}
+
+        <div className="mt-auto space-y-3">
+          {order.paymentStatus === "paid" && actions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {actions.map((nextStatus) => (
+                <Button
+                  key={nextStatus}
+                  disabled={loading}
+                  onClick={() => updateStatus(nextStatus)}
+                  size="sm"
+                >
+                  Mark as {nextStatus.replaceAll("_", " ")}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+
+          {order.status === "ready_for_rider" && !retryVisible ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+              <FiClock />
+              Waiting to retry rider dispatch
+            </div>
+          ) : null}
+
+          {order.status === "ready_for_rider" && retryVisible ? (
+            <Button
+              variant="secondary"
+              disabled={loading}
+              onClick={() => updateStatus("ready_for_rider")}
+              leftIcon={<FiRefreshCcw />}
+              fullWidth
+            >
+              Retry Ready for Rider
+            </Button>
+          ) : null}
+        </div>
       </div>
-    </>
+    </Card>
   );
 };
 

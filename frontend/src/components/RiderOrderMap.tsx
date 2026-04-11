@@ -7,14 +7,9 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine"; // draws routes between points
 import axios from "axios";
 import { realtimeService } from "../main";
+import type { LeafletWithRouting } from "../utils/leafletRouting";
 
-// leaflet manual typescript declaration
-declare module "leaflet" {
-  namespace Routing {
-    function control(options: any): any;
-    function osrmv1(options?: any): any;
-  }
-}
+const routedLeaflet = L as LeafletWithRouting;
 
 const riderIcon = new L.DivIcon({
   html: "🛵💨",
@@ -42,8 +37,8 @@ const Routing = ({
 
   // run when from and to changes
   useEffect(() => {
-    const control = L.Routing.control({
-      waypoints: [L.latLng(from), L.latLng(to)],
+    const control = routedLeaflet.Routing.control({
+      waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
       lineOptions: {
         styles: [{ color: "#E23744", weight: 5 }],
       },
@@ -51,7 +46,7 @@ const Routing = ({
       draggableWaypoints: false,
       show: false,
       createMarker: () => null,
-      router: L.Routing.osrmv1({
+      router: routedLeaflet.Routing.osrmv1({
         serviceUrl: "https://router.project-osrm.org/route/v1",
       }),
     }).addTo(map);
@@ -68,19 +63,18 @@ const RiderOrderMap = ({ order }: Props) => {
   const [riderLocation, setRiderLocation] = useState<[number, number] | null>(
     null,
   );
-
-  if (
-    order.deliveryAddress.latitude == null ||
-    order.deliveryAddress.longitude == null
-  ) {
-    return null;
-  }
-  const deliveryLocation: [number, number] = [
-    order.deliveryAddress.latitude,
-    order.deliveryAddress.longitude,
-  ];
+  const hasDeliveryLocation =
+    order.deliveryAddress.latitude != null &&
+    order.deliveryAddress.longitude != null;
+  const deliveryLocation: [number, number] = hasDeliveryLocation
+    ? [order.deliveryAddress.latitude, order.deliveryAddress.longitude]
+    : [0, 0];
 
   useEffect(() => {
+    if (!hasDeliveryLocation) {
+      return;
+    }
+
     const fetchLocation = () => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -113,9 +107,9 @@ const RiderOrderMap = ({ order }: Props) => {
 const interval = setInterval(fetchLocation, 10000);
 
 return () => clearInterval(interval);
-}, [order.userId]);
+}, [hasDeliveryLocation, order.userId]);
 
-if (!riderLocation) return null;
+if (!hasDeliveryLocation || !riderLocation) return null;
   return (
   <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 p-2">
     <MapContainer

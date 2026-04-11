@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - restaurant
+      - admin
+      - rider
+
+  restaurant:
+    build:
+      context: ./services/restaurant
+    env_file:
+      - ./services/restaurant/.env
+    ports:
+      - "3000:3000"
+
+  admin:
+    build:
+      context: ./services/admin
+    env_file:
+      - ./services/admin/.env
+    ports:
+      - "2000:2000"
+
+  rider:
+    build:
+      context: ./services/rider
+    env_file:
+      - ./services/rider/.env
+    ports:
+      - "5001:5001"

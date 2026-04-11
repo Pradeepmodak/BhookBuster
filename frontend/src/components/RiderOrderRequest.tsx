@@ -2,6 +2,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { riderService } from "../main";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "../utils/http";
 
 interface Props {
   orderId: string;
@@ -28,6 +29,7 @@ useEffect(() => {
 
 const acceptOrder = async () => {
   try {
+    setAccepting(true);
     await axios.post(
       `${riderService}/api/rider/accept/${orderId}`,
       {},
@@ -37,14 +39,13 @@ const acceptOrder = async () => {
         },
       }
     );
-  toast.success("Order Accepted");
-onAccepted();
-} catch (error: any) {
-  toast.error(error.response.data.message);
-  onAccepted();
-} finally {
-  setAccepting(false);
-}
+    toast.success("Order accepted");
+    onAccepted();
+  } catch (error) {
+    toast.error(getErrorMessage(error, "Unable to accept order"));
+  } finally {
+    setAccepting(false);
+  }
 };
   return (
   <div className="space-y-3 rounded-[24px] border border-[#facc15]/20 bg-[#121212] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
