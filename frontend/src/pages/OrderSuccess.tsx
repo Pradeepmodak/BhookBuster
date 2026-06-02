@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { utilsService } from "../main";
+import { utilsService } from "../config";
 import toast from "react-hot-toast";
 import { BiCheckCircle } from "react-icons/bi";
 import { BsArrowRight } from "react-icons/bs";
@@ -23,6 +23,10 @@ const OrderSuccess = () => {
       try {
         await axios.post(`${utilsService}/api/payment/stripe/verify`, {
           sessionId,
+        }, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         });
 
         toast.success("Payment successful");
@@ -81,3 +85,4 @@ const OrderSuccess = () => {
 };
 
 export default OrderSuccess;
+

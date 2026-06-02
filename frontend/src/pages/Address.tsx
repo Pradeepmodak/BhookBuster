@@ -8,14 +8,15 @@ import {
 import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import L from "leaflet";
 import { LuLocateFixed } from "react-icons/lu";
 import { BiLoader, BiPlus, BiTrash } from "react-icons/bi";
+import { FiMapPin, FiPhone } from "react-icons/fi";
 import { motion } from "framer-motion";
 import type { AddressRecord } from "../types";
 
-// ✅ Fix Leaflet icon issue
+// Fix Leaflet icon issue
 delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -26,10 +27,10 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// ✅ Types
+// Types
 type Address = AddressRecord;
 
-// 📍 Click picker
+// Click picker
 const LocationPicker = ({
   setLocation,
 }: {
@@ -43,7 +44,7 @@ const LocationPicker = ({
   return null;
 };
 
-// 📍 Locate Me button
+// Locate Me button
 const LocateMeButton = ({
   onLocate,
 }: {
@@ -94,7 +95,7 @@ const AddressPage = () => {
 
   const geocodeAbortRef = useRef<AbortController | null>(null);
 
-  // 🔁 Reverse geocode
+  // Reverse geocode
   const fetchFormattedAddress = useCallback(
     async (lat: number, lng: number) => {
       geocodeAbortRef.current?.abort();
@@ -126,7 +127,7 @@ const AddressPage = () => {
     [fetchFormattedAddress]
   );
 
-  // 📦 Fetch addresses
+  // Fetch addresses
   const fetchAddresses = useCallback(async () => {
     try {
       const { data } = await axios.get(
@@ -150,7 +151,7 @@ const AddressPage = () => {
     return () => geocodeAbortRef.current?.abort();
   }, [fetchAddresses]);
 
-  // ➕ Add address
+  // Add address
   const addAddress = async () => {
     if (!mobile || !formattedAddress || latitude === null || longitude === null) {
       toast.error("Select a valid location");
@@ -190,7 +191,7 @@ const AddressPage = () => {
     }
   };
 
-  // ❌ Delete address
+  // Delete address
   const deleteAddress = async (id: string) => {
     if (!window.confirm("Delete this address?")) return;
 
@@ -248,8 +249,9 @@ const AddressPage = () => {
 
         {/* Address Preview */}
         {formattedAddress && (
-          <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-            📍 {formattedAddress}
+          <div className="flex items-start gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+            <FiMapPin className="text-yellow-500 shrink-0 mt-0.5" />
+            <span className="text-sm font-medium">{formattedAddress}</span>
           </div>
         )}
 
@@ -297,8 +299,8 @@ const AddressPage = () => {
                     <p className="text-sm font-medium">
                       {addr.formattedAddress}
                     </p>
-                    <p className="text-xs text-gray-400">
-                      📞 {addr.mobile}
+                    <p className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+                      <FiPhone size={12} /> {addr.mobile}
                     </p>
                   </div>
 
@@ -324,3 +326,4 @@ const AddressPage = () => {
 };
 
 export default AddressPage;
+

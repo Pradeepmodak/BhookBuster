@@ -7,6 +7,11 @@ export interface IRestaurant extends Document{
     ownerId:string;
     phone:number;
     isVerified:boolean;
+    cuisineTypes:string[];
+    tags:string[];
+    embedding:number[];
+    embeddingHash?:string;
+    embeddedAt?:Date;
 
     autoLocation:{
         type:"Point",
@@ -40,6 +45,20 @@ const schema=new Schema<IRestaurant>({
         type:Boolean,
         required:true, 
     },
+    cuisineTypes:{
+        type:[String],
+        default:[],
+    },
+    tags:{
+        type:[String],
+        default:[],
+    },
+    embedding:{
+        type:[Number],
+        default:[],
+    },
+    embeddingHash:String,
+    embeddedAt:Date,
     autoLocation:{
         type:{
             type:String,

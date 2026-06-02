@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import type { IOrder } from "../types";
 import { useSocket } from "../context/SocketContext";
 import audio from "../assets/order_placed.mp3";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import OrderCard from "./OrderCard";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
@@ -161,3 +161,4 @@ const RestaurantOrdersPanel = ({ restaurantId }: { restaurantId: string }) => {
 };
 
 export default RestaurantOrdersPanel;
+

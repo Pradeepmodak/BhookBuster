@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { FiArrowRight, FiCheckCircle, FiClock, FiMapPin } from "react-icons/fi";
-import Card from "./ui/Card";
+import { FiMapPin } from "react-icons/fi";
+import { MdVerified } from "react-icons/md";
 
 type Props = {
   id: string;
@@ -28,67 +28,78 @@ const RestaurantCard = ({
 
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.01 }}
-      className={`${!isOpen ? "opacity-80" : ""}`}
+      whileHover={{ y: -6 }}
+      className={`group cursor-pointer rounded-3xl border border-white/5 bg-[#141414] shadow-lg transition-all duration-300 hover:border-white/10 hover:shadow-2xl hover:shadow-black/50 ${!isOpen ? "opacity-75" : ""}`}
       onClick={() => navigate(`/restaurant/${id}`)}
     >
-      <Card className="group cursor-pointer overflow-hidden transition hover:border-[#facc15]/40 hover:shadow-[0_18px_48px_rgba(250,204,21,0.12)]">
-        <div className="relative h-44 w-full overflow-hidden">
-          <img
-            src={image}
-            alt={name}
-            className={`h-full w-full object-cover transition duration-500 group-hover:scale-110 ${!isOpen ? "grayscale" : ""}`}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+      {/* Image Header */}
+      <div className="relative h-52 w-full overflow-hidden rounded-t-3xl">
+        <img
+          src={image}
+          alt={name}
+          className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${!isOpen ? "grayscale" : ""}`}
+        />
+        
+        {/* Soft bottom gradient to blend into content */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/10 to-transparent opacity-90" />
 
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${isOpen ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-200"}`}
-            >
-              {isOpen ? "Open now" : "Closed"}
+        {!isOpen && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <span className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium tracking-widest text-white uppercase backdrop-blur-md">
+              Currently Closed
             </span>
+          </div>
+        )}
+      </div>
+
+      {/* Content Body */}
+      <div className="p-5">
+        {/* Title & Verified Badge */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <h3 className="truncate text-xl font-semibold tracking-tight text-white/95">
+              {name}
+            </h3>
             {isVerified && (
-              <span className="rounded-full bg-[#facc15]/20 px-3 py-1 text-xs font-semibold text-[#facc15]">
-                Verified
-              </span>
-            )}
-          </div>
-
-          {!isOpen && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <span className="rounded-md bg-black/80 px-3 py-1 text-sm font-semibold text-white">
-                Closed
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="truncate text-base font-semibold text-white">{name}</h3>
-            <FiArrowRight className="mt-1 text-[#facc15] transition group-hover:translate-x-1" />
-          </div>
-
-          {description && <p className="line-clamp-2 text-sm text-neutral-400">{description}</p>}
-
-          <div className="grid gap-2 text-sm text-neutral-300">
-            <div className="flex items-center gap-2">
-              <FiMapPin className="text-[#facc15]" />
-              <span>{distance} km away</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FiClock className="text-[#facc15]" />
-              <span>{isOpen ? "Accepting orders" : "Back soon"}</span>
-            </div>
-            {address && (
-              <div className="flex items-center gap-2">
-                <FiCheckCircle className="text-[#facc15]" />
-                <span className="truncate">{address}</span>
-              </div>
+              <MdVerified className="shrink-0 text-[18px] text-[#facc15]" />
             )}
           </div>
         </div>
-      </Card>
+
+        {/* Quick Stats: Distance & Status */}
+        <div className="mt-2 flex items-center gap-2 text-[13px] font-medium text-white/60">
+          <span>{distance} km away</span>
+          <span className="text-white/30">•</span>
+          <div className="flex items-center gap-1.5">
+            {isOpen ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                <span className="text-emerald-400/90">Accepting orders</span>
+              </>
+            ) : (
+              <span className="text-white/40">Opens later</span>
+            )}
+          </div>
+        </div>
+
+        {/* Description */}
+        {description && (
+          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-white/40">
+            {description}
+          </p>
+        )}
+
+        {/* Address Footer */}
+        {address && (
+          <div className="mt-4 flex items-start gap-1.5 text-xs text-white/30">
+            <FiMapPin className="mt-[2px] shrink-0 text-white/20" />
+            <span className="line-clamp-1">{address}</span>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 };

@@ -30,7 +30,7 @@ const Navbar = () => {
   }, [search, setSearchParams]);
 
   return (
-    <div className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#111111]/95 backdrop-blur-xl">
+    <div className="sticky top-0 z-[9999] w-full border-b border-white/10 bg-[#111111]/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <Link to="/" className="flex cursor-pointer items-center gap-3 text-xl font-semibold text-white">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#facc15] text-[#0f0f0f] shadow-[0_0_30px_rgba(250,204,21,0.28)]">
@@ -75,7 +75,7 @@ const Navbar = () => {
 
             <Input
               icon={<BiSearch className="h-5 w-5" />}
-              placeholder="Search for restaurant"
+              placeholder="Search for anything (e.g. 'spicy biryani', 'healthy vegan')"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="rounded-2xl px-4"

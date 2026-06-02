@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { riderService } from "../main";
+import { riderService } from "../config";
 import toast from "react-hot-toast";
 import { BiUpload } from "react-icons/bi";
 import { useAppData } from "../context/AppContext";
@@ -137,3 +137,4 @@ const RiderEditProfile = ({
 };
 
 export default RiderEditProfile;
+

@@ -4,12 +4,13 @@ import express from "express";
 import http from "http";
 import { initSocket } from "./socket.js";
 import internalRoutes from "./routes/internal.js";
+import { corsOptions } from "./config/cors.js";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 // parses incoming requests with JSON payloads and is based on body-parser
 app.use(express.json());
 app.use("/api/v1/internal",internalRoutes);

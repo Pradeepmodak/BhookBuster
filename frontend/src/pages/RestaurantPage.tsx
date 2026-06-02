@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { FiMapPin, FiPackage } from "react-icons/fi";
 import type { IMenuItem, IRestaurant } from "../types";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import RestaurantProfile from "../components/RestaurantProfile";
 import MenuGrid from "../components/MenuGrid";
 import Card from "../components/ui/Card";
@@ -128,3 +128,4 @@ const RestaurantPage = () => {
 };
 
 export default RestaurantPage;
+

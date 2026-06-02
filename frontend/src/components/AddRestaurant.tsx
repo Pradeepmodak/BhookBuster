@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useAppData } from "../context/AppContext";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import { BiMapPin, BiUpload } from "react-icons/bi";
 import { FiBarChart2, FiHome, FiMapPin, FiPhone } from "react-icons/fi";
 import Card from "./ui/Card";
@@ -169,3 +169,4 @@ const AddRestaurant = ({ fetchMyRestaurant }: AddRestaurantProps) => {
 };
 
 export default AddRestaurant;
+

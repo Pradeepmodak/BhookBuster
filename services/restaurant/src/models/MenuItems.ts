@@ -6,6 +6,13 @@ export interface IMenuItem extends Document {
     description: string;
     image?: string;
     price: number;
+    cuisine?: string;
+    tags: string[];
+    dietaryFlags: string[];
+    spiceLevel?: "mild" | "medium" | "hot" | "extra-hot";
+    embedding: number[];
+    embeddingHash?: string;
+    embeddedAt?: Date;
     isAvailable: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -34,6 +41,32 @@ const schema = new Schema<IMenuItem>({
         price: {
         type: Number,
         required: true,
+    },
+        cuisine: {
+        type: String,
+        trim: true,
+    },
+        tags: {
+        type: [String],
+        default: [],
+    },
+        dietaryFlags: {
+        type: [String],
+        default: [],
+    },
+        spiceLevel: {
+        type: String,
+        enum: ["mild", "medium", "hot", "extra-hot"],
+    },
+        embedding: {
+        type: [Number],
+        default: [],
+    },
+        embeddingHash: {
+        type: String,
+    },
+        embeddedAt: {
+        type: Date,
     },
         isAvailable:{
         type: Boolean,

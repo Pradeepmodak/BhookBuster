@@ -8,6 +8,10 @@ export const publishPaymentSuccess = async (payload: {
 }) => {
     // communication pipe 
   const channel = getChannel();
+  if (!channel) {
+    console.error("❌ Cannot publish payment success event: RabbitMQ channel is offline.");
+    return;
+  }
 
   //send a message into the queue
   channel.sendToQueue(

@@ -41,5 +41,6 @@
 
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true
-  }
+  },
+  "exclude": ["src/__tests__/**", "**/*.test.ts"]
 }

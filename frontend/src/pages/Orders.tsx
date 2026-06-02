@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { IOrder } from "../types";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 
@@ -27,9 +27,12 @@ const OrderRow = ({
     className="cursor-pointer rounded-[26px] border border-white/10 bg-[#171717] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition hover:border-[#facc15]/40"
     onClick={onClick}
   >
-    <div className="flex items-center justify-between">
-      <p className="text-sm font-medium">Order #{order._id.slice(-6)}</p>
-      <span className="rounded-full bg-[#facc15]/10 px-3 py-1 text-xs capitalize text-[#facc15]">
+    <div className="flex items-start justify-between">
+      <div>
+        <h3 className="text-lg font-bold text-white">{order.restaurantName || "Restaurant"}</h3>
+        <p className="mt-1 text-xs font-medium text-neutral-500">Order #{order._id.slice(-6)}</p>
+      </div>
+      <span className="rounded-full bg-[#facc15]/10 px-3 py-1 text-xs font-semibold capitalize tracking-wide text-[#facc15]">
         {order.status.replaceAll("_", " ")}
       </span>
     </div>
@@ -132,3 +135,4 @@ const Orders = () => {
 };
 
 export default Orders;
+

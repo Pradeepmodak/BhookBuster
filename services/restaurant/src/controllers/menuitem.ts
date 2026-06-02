@@ -5,9 +5,7 @@ import getBuffer from "../config/datauri.js";
 import axios from "axios";
 import uploadFile from "../middlewares/multer.js";
 import MenuItems from "../models/MenuItems.js";
-import { AppError } from "../middlewares/errorHandler.js";
-import { fetchRestaurantMenuItems } from "../services/catalog.js";
-import { deleteCache } from "../cache/redis.js";
+import { generateMenuEmbedding, toStringArray } from "../lib/embeddings.js";
 
 
 export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -25,7 +23,7 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
         });
     }
 
-    const { name, description, price } = req.body;
+    const { name, description, price, cuisine, tags, dietaryFlags, spiceLevel } = req.body;
     if (!name || !price) {
         return res.status(400).json({
             message: "Name and price are required"
@@ -47,20 +45,32 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
     console.log("Uploading file to utils service...");
     const { data: uploadResult } = await axios.post(`${process.env.UTILS_SERVICE}/api/upload`, {
         buffer: fileBuffer.content,
+    },
+    {
+        headers: {
+            Authorization: req.headers.authorization as string,
+        },
     }
     );
 
 const item = await MenuItems.create({
     name,
     description,
-    price,
+    price: Number(price),
+    cuisine,
+    tags: toStringArray(tags),
+    dietaryFlags: toStringArray(dietaryFlags),
+    spiceLevel,
     restaurantId: restaurant._id,
     image: uploadResult.url,
     isAvailable:true
 
 })
-await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
-await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
+try {
+    await generateMenuEmbedding(item);
+} catch (error: any) {
+    console.warn("⚠️ AI Gateway embedding generation failed for new menu item, but the item was created successfully:", error.message);
+}
 res.status(201).json({
     message:"Item added Successfully",
     item,
@@ -69,10 +79,12 @@ res.status(201).json({
 
 export const getAllItems = TryCatch(async (req: AuthenticatedRequest, res) => {
     const { id } = req.params;
-    if (typeof id !== "string" || !id) {
-        throw new AppError("Restaurant id is required", 400);
+    if (!id) {
+        return res.status(400).json({
+            message: "Id is required",
+        });
     }
-    const items = await fetchRestaurantMenuItems(id);
+    const items = await MenuItems.find({ restaurantId: id });
     res.status(200).json(items);
 });
 
@@ -102,8 +114,6 @@ if(!restaurant){
 }
 
 await item.deleteOne();
-await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
-await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
 
 res.status(200).json({
     message:"Menu item deleted successfully",
@@ -137,10 +147,77 @@ if(!restaurant){
 
 item.isAvailable=!item.isAvailable;
 await item.save();
-await deleteCache(`catalog:menu:${restaurant._id.toString()}`);
-await deleteCache(`restaurant:dashboard:${restaurant._id.toString()}`);
 res.status(200).json({
 message:`Item Marked as ${item.isAvailable ? "available" : "unavailable"}`,
 item,
 })
 })
+
+export const updateMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).json({
+            message: "Please login",
+        });
+    }
+
+    const { itemId } = req.params;
+    const item = await MenuItems.findById(itemId);
+    if (!item) {
+        return res.status(404).json({
+            message: "Menu item not found",
+        });
+    }
+
+    const restaurant = await Restaurant.findOne({
+        _id: item.restaurantId,
+        ownerId: req.user._id,
+    });
+
+    if (!restaurant) {
+        return res.status(404).json({
+            message: "No Restaurant found",
+        });
+    }
+
+    const { name, description, price, cuisine, tags, dietaryFlags, spiceLevel } = req.body;
+
+    if (name !== undefined) item.name = name;
+    if (description !== undefined) item.description = description;
+    if (price !== undefined) item.price = Number(price);
+    if (cuisine !== undefined) item.cuisine = cuisine;
+    if (tags !== undefined) item.tags = toStringArray(tags);
+    if (dietaryFlags !== undefined) item.dietaryFlags = toStringArray(dietaryFlags);
+    if (spiceLevel !== undefined) item.spiceLevel = spiceLevel;
+
+    if (req.file) {
+        const fileBuffer = getBuffer(req.file);
+        if (!fileBuffer?.content) {
+            return res.status(400).json({
+                message: "Invalid image file",
+            });
+        }
+
+        const { data: uploadResult } = await axios.post(
+            `${process.env.UTILS_SERVICE}/api/upload`,
+            { buffer: fileBuffer.content },
+            {
+                headers: {
+                    Authorization: req.headers.authorization as string,
+                },
+            }
+        );
+        item.image = uploadResult.url;
+    }
+
+    await item.save();
+    try {
+        await generateMenuEmbedding(item);
+    } catch (error: any) {
+        console.warn("⚠️ AI Gateway embedding generation failed for updated menu item, but the item was saved successfully:", error.message);
+    }
+
+    res.json({
+        message: "Menu item updated successfully",
+        item,
+    });
+});

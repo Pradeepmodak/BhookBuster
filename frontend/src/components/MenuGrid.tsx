@@ -5,7 +5,7 @@ import { BiTrash } from "react-icons/bi";
 import { VscLoading } from "react-icons/vsc";
 import { FiCheckCircle, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import axios from "axios";
 import { useAppData } from "../context/AppContext";
 import { motion } from "framer-motion";
@@ -23,7 +23,7 @@ const MenuGrid = ({ items, onItemDeleted, isSeller }: MenuGridProps) => {
   const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
   const [statusItemId, setStatusItemId] = useState<string | null>(null);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
-  const { fetchCart } = useAppData();
+  const { cart, fetchCart } = useAppData();
 
   const handleDelete = async (itemId: string) => {
     if (!window.confirm("Delete this item?")) return;
@@ -81,6 +81,38 @@ const MenuGrid = ({ items, onItemDeleted, isSeller }: MenuGridProps) => {
       fetchCart();
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to add"));
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
+
+  const incrementCart = async (itemId: string) => {
+    try {
+      setLoadingItemId(itemId);
+      await axios.put(
+        `${restaurantService}/api/cart/inc`,
+        { itemId },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+      fetchCart();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to increase"));
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
+
+  const decrementCart = async (itemId: string) => {
+    try {
+      setLoadingItemId(itemId);
+      await axios.put(
+        `${restaurantService}/api/cart/dec`,
+        { itemId },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+      fetchCart();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to decrease"));
     } finally {
       setLoadingItemId(null);
     }
@@ -168,23 +200,54 @@ const MenuGrid = ({ items, onItemDeleted, isSeller }: MenuGridProps) => {
                           {isDeleteLoading ? <VscLoading className="animate-spin" size={16} /> : <BiTrash size={16} />}
                         </Button>
                       </>
-                    ) : (
-                      <Button
-                        disabled={!item.isAvailable || itemBusy}
-                        onClick={() => addToCart(item.restaurantId, item._id)}
-                        size="sm"
-                        className="rounded-xl p-2"
-                      >
-                        {isLoading ? <VscLoading className="animate-spin" size={16} /> : <BsCartPlus size={16} />}
-                      </Button>
-                    )}
+                    ) : (() => {
+                      const cartItem = cart?.find((c: any) => c.itemId === item._id || c.itemId?._id === item._id);
+                      const quantity = cartItem?.quantity || 0;
+
+                      if (quantity > 0) {
+                        return (
+                          <div className="flex items-center gap-2 rounded-xl bg-yellow-400 p-1 shadow-[0_0_15px_rgba(250,204,21,0.15)]">
+                            <button
+                              disabled={itemBusy}
+                              onClick={() => decrementCart(item._id)}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/10 text-black transition hover:bg-black/20 disabled:opacity-50"
+                            >
+                              <span className="text-lg font-bold leading-none -mt-0.5">-</span>
+                            </button>
+                            {isLoading ? (
+                              <div className="flex w-4 justify-center"><VscLoading className="animate-spin text-black" size={14} /></div>
+                            ) : (
+                              <span className="w-4 text-center text-sm font-bold text-black">{quantity}</span>
+                            )}
+                            <button
+                              disabled={itemBusy}
+                              onClick={() => incrementCart(item._id)}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/10 text-black transition hover:bg-black/20 disabled:opacity-50"
+                            >
+                              <span className="text-lg font-bold leading-none -mt-0.5">+</span>
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Button
+                          disabled={!item.isAvailable || itemBusy}
+                          onClick={() => addToCart(item.restaurantId, item._id)}
+                          size="sm"
+                          className="rounded-xl p-2 bg-yellow-400 text-black hover:brightness-110"
+                        >
+                          {isLoading ? <VscLoading className="animate-spin text-black" size={16} /> : <BsCartPlus className="text-black" size={16} />}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
 
               {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                  <VscLoading className="animate-spin text-yellow-400" size={20} />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                  <VscLoading className="animate-spin text-yellow-400" size={24} />
                 </div>
               )}
             </Card>
@@ -196,3 +259,4 @@ const MenuGrid = ({ items, onItemDeleted, isSeller }: MenuGridProps) => {
 };
 
 export default MenuGrid;
+

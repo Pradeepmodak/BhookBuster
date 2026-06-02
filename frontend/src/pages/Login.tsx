@@ -1,5 +1,5 @@
-import axios from "axios";
-import { authService } from "../main";
+﻿import axios from "axios";
+import { authService } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -116,3 +116,4 @@ const Login = () => {
 };
 
 export default Login;
+

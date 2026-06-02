@@ -8,7 +8,7 @@ import {
 } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAppData } from "./AppContext";
-import { realtimeService } from "../main";
+import { realtimeService } from "../config";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -35,14 +35,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socketRef.current = nextSocket;
+    setSocket(nextSocket);
 
     nextSocket.on("connect", () => {
-      setSocket(nextSocket);
       console.log("Socket Connected", nextSocket.id);
     });
 
     nextSocket.on("disconnect", () => {
-      setSocket(null);
       console.log("Socket Disconnected");
     });
     nextSocket.on("connect_error", (err) => {
@@ -65,3 +64,4 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => useContext(SocketContext);
+

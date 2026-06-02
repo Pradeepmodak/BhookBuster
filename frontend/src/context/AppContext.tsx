@@ -1,7 +1,7 @@
-import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
+﻿import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
 
 import axios from 'axios';
-import { authService, restaurantService } from '../main';
+import { authService, restaurantService } from '../config';
 import { type AppContextType, type User, type LocationData,type ICart, } from '../types';
 import { Toaster } from 'react-hot-toast';
 const AppContext=createContext<AppContextType|undefined>(undefined);
@@ -160,3 +160,4 @@ if(!context){
 }
 return context;
 }
+

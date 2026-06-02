@@ -7,6 +7,7 @@ import Order from "../models/Order.js";
 import Restaurant, { IRestaurant } from "../models/Restaurant.js";
 import axios from "axios";
 import { publishEvent } from "../config/order.publisher.js";
+import { deleteCache } from "../cache/redis.js";
 import mongoose from "mongoose";
 
 export const createOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -198,6 +199,7 @@ export const fetchOrderForPayment = TryCatch(async (req, res) => {
     orderId:order._id,
     amount:order.totalAmount,
     currency:"INR",
+    userId: order.userId,
   }) 
 
 });
@@ -326,10 +328,12 @@ console.log("Event Published Successfully");
 
 
 
-res.json({
-  message: "Order status updated successfully",
-  order,
-})
+  await deleteCache(`restaurant:dashboard:${order.restaurantId}`);
+
+  return res.json({
+    message: "Order status updated successfully",
+    order,
+  });
 }
 );
 
@@ -379,7 +383,7 @@ export const assignRiderToOrder = TryCatch(async (req, res) => {
     });
   }
 
-  const { orderId, riderId, riderName, riderPhone } = req.body;
+  const { orderId, riderId, riderUserId, riderName, riderPhone } = req.body;
 
   const orderAvailable=await Order.findOne({
     riderId,
@@ -446,7 +450,23 @@ await axios.post(
     },
   }
 );
-res.json({
+await axios.post(
+  `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
+  {
+    event: "order:rider_assigned",
+    room: `user:${riderUserId}`,
+    payload: orderUpdated,
+  },
+  {
+    headers: {
+      "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+    },
+  }
+);
+
+await deleteCache(`restaurant:dashboard:${order.restaurantId}`);
+
+return res.json({
   message: "Rider Assigned Successfully",
   success: true,
   order: orderUpdated,
@@ -652,9 +672,11 @@ await axios.post(
     },
   }
 );
-return res.json({
-  message:"Order Updated Successfully"
-})
+  await deleteCache(`restaurant:dashboard:${order.restaurantId}`);
+
+  return res.json({
+    message:"Order Updated Successfully"
+  })
 }
 
 if(order.status=="picked_up"){
@@ -690,9 +712,11 @@ await axios.post(
     },
   }
 ).catch(() => {});
-return res.json({
-  message:"Order Updated Successfully"
-})
+  await deleteCache(`restaurant:dashboard:${order.restaurantId}`);
+
+  return res.json({
+    message:"Order Updated Successfully"
+  })
 }
 
 return res.status(400).json({
