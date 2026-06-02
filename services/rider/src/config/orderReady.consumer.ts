@@ -1,13 +1,15 @@
 import axios from "axios";
 import { Rider } from "../models/Rider.js";
 import { getChannel } from "./rabbitmq.js";
-import { CACHE_TTL, getCache, setCache } from "../cache/redis.js";
-const getRealtimeServiceUrl = () => process.env.REALTIME_SERVICE_URL || process.env.REALTIME_SERVICE || "http://localhost:4000";
 
 // This is a RabbitMQ consumer that listens for “order ready”
 //  events and notifies nearby riders
 export const startOrderReadyConsumer = async () => {
     const channel = getChannel();
+    if (!channel) {
+        console.warn("OrderReady consumer skipped: RabbitMQ is offline.");
+        return;
+    }
 
     console.log("Starting to consume from:", process.env.ORDER_READY_QUEUE);
 // start listening for messages
@@ -52,16 +54,7 @@ for (const rider of riders) {
   console.log(`Notifying rider userId: ${rider.userId}`);
 
   try {
-    const queueKey = `rider:queue:${rider.userId}`;
-    const existingQueue =
-      (await getCache<Array<{ orderId: string; restaurantId: string }>>(queueKey)) || [];
-    const nextQueue = existingQueue.some((entry) => entry.orderId === orderId)
-      ? existingQueue
-      : [...existingQueue, { orderId, restaurantId }];
-
-    await setCache(queueKey, nextQueue, CACHE_TTL.lists);
-
-    await axios.post(`${getRealtimeServiceUrl()}/api/v1/internal/emit`,{
+    await axios.post(`${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,{
     event:"order:available",
     room:`user:${rider.userId}`,
     payload:{orderId,restaurantId},    
@@ -79,9 +72,6 @@ channel.ack(msg!);
 console.log("Message acknowledge");
         } catch (error) {
             console.log("OrderReady consumer error :",error);
-            if (msg) {
-              channel.ack(msg);
-            }
          }
 
     });

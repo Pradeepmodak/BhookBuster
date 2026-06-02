@@ -1,9 +1,9 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { useEffect, useState } from "react";
 import { FiCheckCircle, FiClock, FiMapPin, FiPackage, FiRefreshCcw } from "react-icons/fi";
 import type { IOrder } from "../types";
 import { ORDER_ACTIONS } from "../utils/orderflow";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import toast from "react-hot-toast";
 import Card from "./ui/Card";
 import Button from "./ui/Button";
@@ -190,3 +190,4 @@ const OrderCard = ({ order, onStatusUpdate }: Props) => {
 };
 
 export default OrderCard;
+

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import {
   BarChart,
   Bar,
@@ -241,3 +241,4 @@ const RiderEarnings = ({ profile }: { profile: IRider | null }) => {
 };
 
 export default RiderEarnings;
+

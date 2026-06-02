@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { restaurantService, utilsService } from "../main";
+import { restaurantService, utilsService } from "../config";
 import type { ICart, IMenuItem, IRestaurant } from "../types";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -103,7 +103,11 @@ const Checkout = () => {
       if (!order) return;
 
       const { orderId, amount } = order;
-      const { data } = await axios.post(`${utilsService}/api/payment/create`, { orderId });
+      const { data } = await axios.post(`${utilsService}/api/payment/create`, { orderId }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       const { razorpayOrderId, key } = data;
 
       const options = {
@@ -124,6 +128,10 @@ const Checkout = () => {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               orderId,
+            }, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
             });
 
             toast.success("Payment successful");
@@ -157,7 +165,11 @@ const Checkout = () => {
 
       const { orderId } = order;
       await stripePromise;
-      const { data } = await axios.post(`${utilsService}/api/payment/stripe/create`, { orderId });
+      const { data } = await axios.post(`${utilsService}/api/payment/stripe/create`, { orderId }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -176,7 +188,7 @@ const Checkout = () => {
         <div className="space-y-6">
           <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
             <h1 className="text-3xl font-semibold">Checkout</h1>
-            <p className="mt-3 text-sm text-neutral-400">{restaurant.name} • {restaurant.autoLocation.formattedAddress}</p>
+            <p className="mt-3 text-sm text-neutral-400">{restaurant.name} â€¢ {restaurant.autoLocation.formattedAddress}</p>
           </div>
 
           <div className="rounded-[30px] border border-white/10 bg-[#171717] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
@@ -279,3 +291,4 @@ const Checkout = () => {
 };
 
 export default Checkout;
+

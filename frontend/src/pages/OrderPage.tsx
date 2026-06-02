@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useEffect, useState } from "react";
 import type { IOrder } from "../types";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import axios from "axios";
 import UserOrderMap from "../components/UserOrderMap";
 
@@ -37,31 +37,29 @@ const OrderPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !id) return;
+
+    socket.emit("join-room", `order:${id}`);
+
     const onOrderUpdate = () => {
       fetchOrder();
     };
-
-    socket.on("order:update", onOrderUpdate);
-    socket.on("order:rider_assigned", onOrderUpdate);
-    return () => {
-      socket.off("order:update", onOrderUpdate);
-      socket.off("order:rider_assigned", onOrderUpdate);
-    };
-  }, [socket]);
-
-  useEffect(() => {
-    if (!socket) return;
 
     const onRiderLocation = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
       setRiderLocation([latitude, longitude]);
     };
 
+    socket.on("order:update", onOrderUpdate);
+    socket.on("order:rider_assigned", onOrderUpdate);
     socket.on("rider:location", onRiderLocation);
+
     return () => {
+      socket.off("order:update", onOrderUpdate);
+      socket.off("order:rider_assigned", onOrderUpdate);
       socket.off("rider:location", onRiderLocation);
+      socket.emit("leave-room", `order:${id}`);
     };
-  }, [socket]);
+  }, [socket, id]);
 
   if (loading) {
     return <p className="py-12 text-center text-neutral-400">Loading order...</p>;
@@ -78,9 +76,12 @@ const OrderPage = () => {
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 text-white">
       <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Order #{order._id.slice(-6)}</h1>
-          <span className="rounded-full bg-[#facc15]/10 px-4 py-2 text-sm capitalize text-[#facc15]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{order.restaurantName || "Restaurant"}</h1>
+            <p className="mt-1 text-sm font-medium text-neutral-500">Order #{order._id.slice(-6)}</p>
+          </div>
+          <span className="rounded-full bg-[#facc15]/10 px-4 py-2 text-sm font-semibold capitalize tracking-wide text-[#facc15]">
             {order.status.replaceAll("_", " ")}
           </span>
         </div>
@@ -183,3 +184,4 @@ const OrderPage = () => {
 };
 
 export default OrderPage;
+

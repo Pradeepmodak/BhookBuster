@@ -1,13 +1,13 @@
 import express from "express";
 import { isAdmin, isAuth } from "../middlewares/isAuth.js";
 import {
-  getAdminStats,
-  getOrdersTrend,
   getPendingRestaurant,
   getPendingRiders,
-  getTopItems,
   verifyRestaurant,
   verifyRider,
+  getAdminStats,
+  getOrdersTrend,
+  getTopItems,
 } from "../controllers/admin.js";
 
 
@@ -20,24 +20,6 @@ router.get(
 	isAuth,
 	isAdmin,
 	getPendingRestaurant as RequestHandler
-);
-router.get(
-	"/admin/stats",
-	isAuth,
-	isAdmin,
-	getAdminStats as RequestHandler
-);
-router.get(
-	"/admin/top-items",
-	isAuth,
-	isAdmin,
-	getTopItems as RequestHandler
-);
-router.get(
-	"/admin/orders-trend",
-	isAuth,
-	isAdmin,
-	getOrdersTrend as RequestHandler
 );
 router.get(
 	"/admin/rider/pending",
@@ -56,6 +38,25 @@ router.patch(
 	isAuth,
 	isAdmin,
 	verifyRestaurant as RequestHandler
+);
+
+router.get(
+	"/admin/stats",
+	isAuth,
+	isAdmin,
+	getAdminStats as RequestHandler
+);
+router.get(
+	"/admin/orders-trend",
+	isAuth,
+	isAdmin,
+	getOrdersTrend as RequestHandler
+);
+router.get(
+	"/admin/top-items",
+	isAuth,
+	isAdmin,
+	getTopItems as RequestHandler
 );
 
 export default router;

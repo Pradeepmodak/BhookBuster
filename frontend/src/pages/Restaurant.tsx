@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import type { IMenuItem, IRestaurant, RestaurantDashboardStats } from "../types";
 import AddRestaurant from "../components/AddRestaurant";
 import RestaurantProfile from "../components/RestaurantProfile";
 import MenuGrid from "../components/MenuGrid";
 import AddMenuItem from "../components/AddMenuItem";
 import RestaurantOrdersPanel from "../components/RestaurantOrdersPanel";
+import RestaurantInsights from "../components/RestaurantInsights";
 import { useAppData } from "../context/AppContext";
+import { useSocket } from "../context/SocketContext";
 import StatCard from "../components/ui/StatCard";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -84,10 +86,16 @@ const Restaurant = () => {
 
   const fetchAnalytics = async (restaurantId: string) => {
     try {
-      const { data } = await axios.get(`${restaurantService}/api/restaurant/analytics/${restaurantId}`, {
+      const { data } = await axios.get(`${restaurantService}/api/analytics/revenue?restaurantId=${restaurantId}`, {
         headers: authHeaders,
       });
-      setAnalytics(data || emptyAnalytics);
+      setAnalytics({
+        ...emptyAnalytics,
+        revenue: data.totalRevenue || 0,
+        orders: data.orderCount || 0,
+        delivered: data.orderCount || 0,
+        averageOrderValue: data.avgOrderValue || 0,
+      });
     } catch (error) {
       console.error("Error fetching analytics:", error);
       setAnalytics(emptyAnalytics);
@@ -104,6 +112,24 @@ const Restaurant = () => {
       fetchAnalytics(restaurant._id);
     }
   }, [restaurant]);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket || !restaurant?._id) return;
+    
+    const onUpdate = () => {
+      fetchAnalytics(restaurant._id);
+    };
+
+    socket.on("order:new", onUpdate);
+    socket.on("order:rider_assigned", onUpdate);
+
+    return () => {
+      socket.off("order:new", onUpdate);
+      socket.off("order:rider_assigned", onUpdate);
+    };
+  }, [socket, restaurant]);
 
   if (loading) {
     return (
@@ -194,144 +220,8 @@ const Restaurant = () => {
             ) : null}
 
             {tab === "sales" ? (
-              <div className="space-y-4">
-                <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                  <Card className="p-5">
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold">Revenue trend</h3>
-                      <p className="text-sm text-gray-400">Recent daily order flow</p>
-                    </div>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={salesStats.revenueSeries.daily}>
-                          <defs>
-                            <linearGradient id="restaurantRevenue" x1="0" x2="0" y1="0" y2="1">
-                              <stop offset="0%" stopColor="#facc15" stopOpacity={0.85} />
-                              <stop offset="100%" stopColor="#facc15" stopOpacity={0.05} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid stroke="#262626" vertical={false} />
-                          <XAxis dataKey="label" stroke="#737373" />
-                          <YAxis stroke="#737373" />
-                          <Tooltip contentStyle={{ background: "#111111", border: "1px solid rgba(250, 204, 21, 0.2)", borderRadius: 16 }} />
-                          <Area type="monotone" dataKey="revenue" stroke="#facc15" fill="url(#restaurantRevenue)" strokeWidth={3} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  <Card className="grid gap-4 p-5">
-                    <StatCard label="Gross Revenue" value={`Rs ${salesStats.revenue}`} helper="Paid order throughput" />
-                    <StatCard
-                      label="Net Platform Revenue"
-                      value={`Rs ${salesStats.netPlatformRevenue}`}
-                      helper="Platform fee plus delivery after rider payout"
-                    />
-                    <StatCard label="Live Orders" value={salesStats.orders - salesStats.delivered} helper="Still in fulfillment" />
-                    <StatCard
-                      label="Delivery Completion"
-                      value={`${salesStats.orders ? Math.round((salesStats.delivered / salesStats.orders) * 100) : 0}%`}
-                      helper="Delivered versus total orders"
-                    />
-                  </Card>
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                  <Card className="p-5">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold">Hourly performance</h3>
-                        <p className="text-sm text-gray-400">When your kitchen is busiest</p>
-                      </div>
-                      <span className="text-sm text-[var(--color-accent)]">{salesStats.peakOrderTime}</span>
-                    </div>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={salesStats.hourlyPerformance}>
-                          <CartesianGrid stroke="#262626" vertical={false} />
-                          <XAxis dataKey="hour" stroke="#737373" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                          <YAxis stroke="#737373" />
-                          <Tooltip contentStyle={{ background: "#111111", border: "1px solid rgba(250, 204, 21, 0.2)", borderRadius: 16 }} />
-                          <Bar dataKey="orders" fill="#facc15" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  <Card className="grid gap-4 p-5">
-                    <StatCard
-                      label="Customer Delivery Fees"
-                      value={`Rs ${salesStats.customerDeliveryFees}`}
-                      helper="Collected from customers"
-                      icon={<FiDollarSign />}
-                    />
-                    <StatCard
-                      label="Rider Payout"
-                      value={`Rs ${salesStats.riderPayout}`}
-                      helper="Total delivery partner earnings"
-                      icon={<FiActivity />}
-                    />
-                    <StatCard
-                      label="Platform Subsidy"
-                      value={`Rs ${salesStats.platformSubsidy}`}
-                      helper="Free-delivery support absorbed by the platform"
-                      icon={<FiTrendingUp />}
-                    />
-                    <StatCard label="New Customers" value={salesStats.newCustomers} helper="Ordered once so far" icon={<FiUsers />} />
-                    <StatCard label="Returning Customers" value={salesStats.returningCustomers} helper="Repeat buyers" icon={<FiUsers />} />
-                    <StatCard
-                      label="Week-over-week"
-                      value={`${salesStats.weekOverWeekGrowth >= 0 ? "+" : ""}${salesStats.weekOverWeekGrowth}%`}
-                      helper={salesStats.cached ? "Served from cache" : "Freshly calculated"}
-                      icon={<FiTrendingUp />}
-                    />
-                  </Card>
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <Card className="p-5">
-                    <h3 className="text-lg font-semibold">Actionable insights</h3>
-                    <div className="mt-4 grid gap-3">
-                      {salesStats.insights.length === 0 ? (
-                        <Card className="border-dashed px-4 py-10 text-center text-sm text-gray-400">
-                          No analytics insights yet.
-                        </Card>
-                      ) : (
-                        salesStats.insights.map((insight) => (
-                          <Card key={insight} className="border-white/10 bg-black/20 p-4">
-                            <p className="text-sm text-gray-300">{insight}</p>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-
-                  <Card className="p-5">
-                    <h3 className="text-lg font-semibold">Top items</h3>
-                    <div className="mt-4 grid gap-3">
-                      {salesStats.topItems.length === 0 ? (
-                        <Card className="border-dashed px-4 py-10 text-center text-sm text-gray-400">
-                          No sales data yet.
-                        </Card>
-                      ) : (
-                        salesStats.topItems.map((item) => (
-                          <Card key={item.itemId} className="border-white/10 bg-black/20 p-4">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <p className="font-semibold text-white">{item.name}</p>
-                                <p className="text-sm text-gray-400">{item.quantitySold} sold</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-[var(--color-accent)]">Rs {item.revenue}</p>
-                                <p className="text-xs text-gray-500">{item.revenueShare}% share</p>
-                              </div>
-                            </div>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                </div>
+              <div className="text-gray-900">
+                <RestaurantInsights restaurantId={restaurant._id} />
               </div>
             ) : null}
           </div>
@@ -342,3 +232,4 @@ const Restaurant = () => {
 };
 
 export default Restaurant;
+

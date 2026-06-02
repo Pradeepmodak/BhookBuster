@@ -5,19 +5,23 @@ import cors from 'cors';
 import cloudinaryRoutes from './routes/cloudinary.js';
 import paymentRoutes from './routes/payments.js';
 import { connectRabbitMQ } from './config/rabbitmq.js';
+import { corsOptions } from './config/cors.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
+
 dotenv.config();
 connectRabbitMQ();
+
 const app = express();
 const PORT = process.env.PORT || 7000;
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 const { CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET } = process.env;
 if(!CLOUD_NAME || !CLOUD_API_KEY || !CLOUD_API_SECRET) {
   console.error('Cloudinary configuration is missing. Please check your environment variables.');
- throw new Error('Cloudinary configuration is missing');
+  throw new Error('Cloudinary configuration is missing');
 }
 cloudinary.v2.config({
   cloud_name: CLOUD_NAME,
@@ -27,8 +31,10 @@ cloudinary.v2.config({
 
 app.use('/api', cloudinaryRoutes);
 app.use('/api/payment', paymentRoutes);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
+
 app.listen(PORT, () => {
   console.log(`Utils service is running on port ${PORT}`);
 });

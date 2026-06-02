@@ -8,13 +8,13 @@ import type { LeafletWithRouting } from "../utils/leafletRouting";
 
 const routedLeaflet = L as LeafletWithRouting;
 const riderIcon = new L.DivIcon({
-  html: "🛵💨",
-  iconSize: [30, 30],
+  html: `<div style="background: #facc15; color: #000; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 16px;">R</div>`,
+  iconSize: [32, 32],
   className: "",
 });
 const deliveryIcon = new L.DivIcon({
-  html: "🏠",
-  iconSize: [30, 30],
+  html: `<div style="background: #22c55e; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 16px;">H</div>`,
+  iconSize: [32, 32],
   className: "",
 });
 const Routing = ({

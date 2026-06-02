@@ -56,19 +56,27 @@ export const isAuth: RequestHandler = async (req, res, next) => {
   }
 };
 
+import { getUserCollection } from "../utils/collection.js";
+import { ObjectId } from "mongodb";
+
 export const isAdmin: RequestHandler = async (req, res, next) => {
   try {
-    if (!(req as any).user) {
+    const user = (req as any).user;
+    if (!user) {
       res.status(401).json({
         message: "Please Login",
       });
       return;
     }
-    if((req as any).user.role!=="admin"){
-        res.status(403).json({
-            message:"Access denied",
-        })
-        return ;
+
+    const userCollection = await getUserCollection();
+    const dbUser = await userCollection.findOne({ _id: new ObjectId(user._id) });
+
+    if (!dbUser || dbUser.role !== "admin") {
+      res.status(403).json({
+        message: "Access denied",
+      });
+      return;
     }
     next();
   } catch (error) {

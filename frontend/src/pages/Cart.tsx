@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { useAppData } from "../context/AppContext";
 import { useState } from "react";
 import type { ICart, IMenuItem, IRestaurant } from "../types";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import toast from "react-hot-toast";
 import { VscLoading } from "react-icons/vsc";
 import { BiMinus, BiPlus } from "react-icons/bi";
@@ -199,3 +199,4 @@ const Cart = () => {
 };
 
 export default Cart;
+

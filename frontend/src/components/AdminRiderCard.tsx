@@ -1,5 +1,5 @@
 import axios from "axios";
-import { adminService } from "../main";
+import { adminService } from "../config";
 import { toast } from "react-hot-toast";
 import VerificationBadge from "./VerificationBadge";
 import Button from "./ui/Button";
@@ -33,13 +33,13 @@ const AdminRiderCard = ({
   };
 
   return (
-    <Card className="space-y-3 p-4">
+    <Card className="flex h-full flex-col space-y-3 p-4">
       <img
         src={rider.picture}
-        className="h-40 w-full rounded-2xl object-cover"
+        className="h-40 w-full shrink-0 rounded-2xl object-cover"
         alt=""
       />
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-semibold text-white">Rider ID: {rider._id}</h3>
         <VerificationBadge isVerified={rider.isVerified} size={14} />
       </div>
@@ -47,19 +47,21 @@ const AdminRiderCard = ({
       <p className="text-sm text-neutral-400">
         Phone: {rider.phoneNumber}
       </p>
-<p className="text-sm text-neutral-400">
-  Aadhar:{rider.aadharNumber}
-</p>
+      <p className="text-sm text-neutral-400">
+        Aadhar: {rider.aadharNumber}
+      </p>
       <p className="text-sm text-neutral-300">
         DL: {rider.drivingLicenseNumber}
       </p>
       
-
-      <Button fullWidth onClick={verify}>
-        Verify Rider
-      </Button>
+      <div className="mt-auto pt-2">
+        <Button fullWidth onClick={verify}>
+          Verify Rider
+        </Button>
+      </div>
     </Card>
   );
 };
 
 export default AdminRiderCard;
+

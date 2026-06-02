@@ -1,13 +1,10 @@
 import { AuthenticatedRequest } from "../middlewares/isAuth.js"
 import TryCatch from "../middlewares/trycatch.js"
-import { AppError } from "../middlewares/errorHandler.js";
 import Restaurant from "../models/Restaurant.js";
 import getBuffer from "../config/datauri.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
-import { fetchNearbyRestaurants } from "../services/catalog.js";
-import { getRestaurantDashboardAnalytics } from "../services/analytics.js";
-import { deleteCache } from "../cache/redis.js";
+import { generateRestaurantEmbedding, toStringArray } from "../lib/embeddings.js";
 
 export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => {
     const user = req.user;
@@ -26,7 +23,7 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
         });
     }
 
-    const { name, description, latitude, longitude, formattedAddress, phone } = req.body;
+    const { name, description, latitude, longitude, formattedAddress, phone, cuisineTypes, tags } = req.body;
 
     if (!name || !latitude || !longitude) {
         return res.status(400).json({
@@ -50,6 +47,11 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
 
     const { data: uploadResult } = await axios.post(`${process.env.UTILS_SERVICE}/api/upload`, {
         buffer: fileBuffer.content,
+    },
+    {
+        headers: {
+            Authorization: req.headers.authorization as string,
+        },
     }
     );
 
@@ -59,6 +61,8 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
         phone: Number(phone),
         image: uploadResult.url,
         ownerId: user._id,
+        cuisineTypes: toStringArray(cuisineTypes),
+        tags: toStringArray(tags),
         autoLocation: {
             type: "Point",
             coordinates: [Number(longitude), Number(latitude)],
@@ -66,8 +70,6 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
         },
         isVerified: false,
     });
-    await deleteCache("admin:verification:restaurants");
-    await deleteCache("admin:stats");
     return res.status(201).json({
         message: "Restaurant created successfully",
         restaurant,
@@ -118,16 +120,17 @@ export const updateStatusRestaurant = TryCatch(
                 ownerId: req.user._id,
             },
             { isOpen: status },
-            { new: true }
+            { returnDocument: 'after' }
         );
+
         if (!restaurant) {
             return res.status(404).json({
                 message: "Restaurant not found",
             });
         }
-
+        
         return res.status(200).json({
-            message: status ? "Restaurant is now open" : "Restaurant is now closed",
+            message: "Restaurant status Updated",
             restaurant,
         });
     }
@@ -139,13 +142,18 @@ export const updateRestaurant = TryCatch(async (req: AuthenticatedRequest, res) 
             message: "Please Login"
         });
     }
-    const { name, description } = req.body;
+    const { name, description, cuisineTypes, tags } = req.body;
+    const update: Record<string, unknown> = {};
+
+    if (name !== undefined) update.name = name;
+    if (description !== undefined) update.description = description;
+    if (cuisineTypes !== undefined) update.cuisineTypes = toStringArray(cuisineTypes);
+    if (tags !== undefined) update.tags = toStringArray(tags);
+
     const restaurant = await Restaurant.findOneAndUpdate({
         ownerId: req.user._id
     },
-        {
-            name: name, description: description
-        },
+        update,
         {
             new: true
         },
@@ -155,6 +163,12 @@ export const updateRestaurant = TryCatch(async (req: AuthenticatedRequest, res) 
         return res.status(404).json({
             message:"Restaurant not found",
         });
+    }
+
+    try {
+        await generateRestaurantEmbedding(restaurant);
+    } catch (error: any) {
+        console.warn("⚠️ AI Gateway embedding generation failed for updated restaurant, but the profile was saved successfully:", error.message);
     }
 
     res.json({
@@ -181,7 +195,12 @@ export const updateRestaurantImage = TryCatch(async (req: AuthenticatedRequest, 
     // Upload image to utils microservice
     const { data: uploadResult } = await axios.post(
         `${process.env.UTILS_SERVICE}/api/upload`,
-        { buffer: fileBuffer.content }
+        { buffer: fileBuffer.content },
+        {
+            headers: {
+                Authorization: req.headers.authorization as string,
+            },
+        }
     );
 
     const restaurant = await Restaurant.findOneAndUpdate(
@@ -204,17 +223,46 @@ export const getNearbyRestaurant = TryCatch(async (req, res) => {
   const { latitude, longitude, radius = 5000, search = "" } = req.query;
 
   if (!latitude || !longitude) {
-    throw new AppError("Latitude and longitude are required", 400);
+    return res.status(400).json({
+      message: "Latitude and longitude are required",
+    });
   }
 
-  const restaurants = await fetchNearbyRestaurants({
-    latitude: Number(latitude),
-    longitude: Number(longitude),
-    radius: Number(radius),
-    search: String(search || ""),
-  });
+  const query: any = {
+    isVerified: true,
+  };
 
-  res.json({
+  if (search && typeof search === "string") {
+  query.name = { $regex: search, $options: "i" }; // search by name (case-insensitive)
+  }
+const restaurants = await Restaurant.aggregate([
+  {
+    $geoNear: {
+      near: {
+        type: "Point",
+        coordinates: [Number(longitude), Number(latitude)],
+      },
+      distanceField: "distance",
+      maxDistance: Number(radius),
+      spherical: true,
+      query,
+    },
+},
+{
+  $sort: {
+    isOpen: -1,
+    distance: 1,
+  },
+},
+{
+  $addFields: {
+    distanceKm: {
+      $round: [{ $divide: ["$distance", 1000] }, 2],
+    },
+  },
+}
+]);
+res.json({
     success:true,
     count:restaurants.length,
     restaurants,
@@ -223,27 +271,5 @@ export const getNearbyRestaurant = TryCatch(async (req, res) => {
 
 export const fetchSingleRestaurant = TryCatch(async (req, res) => {
   const restaurant = await Restaurant.findById(req.params.id);
-  if (!restaurant) {
-    throw new AppError("Restaurant not found", 404);
-  }
   res.json(restaurant);
-});
-
-export const getRestaurantAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
-  if (!req.user) {
-    return res.status(401).json({
-      message: "Unauthorized",
-    });
-  }
-
-  if (typeof req.params.id !== "string" || !req.params.id) {
-    throw new AppError("Restaurant id is required", 400);
-  }
-
-  const analytics = await getRestaurantDashboardAnalytics({
-    restaurantId: req.params.id,
-    ownerId: req.user._id.toString(),
-  });
-
-  res.json(analytics);
 });

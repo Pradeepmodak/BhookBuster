@@ -5,7 +5,7 @@ import TryCatch from "../middlewares/trycatch.js";
 import { Rider } from "../models/Rider.js";
 import { CACHE_TTL, deleteCache, getCache, setCache, withCache } from "../cache/redis.js";
 import mongoose from "mongoose";
-
+import User from "../models/User.js";
 const requireServiceUrl = (url: string | undefined, name: string) => {
   if (!url) {
     throw new Error(`${name} is not configured`);
@@ -376,8 +376,7 @@ export const fetchDeliveryQueue = TryCatch(async (req: AuthenticatedRequest, res
   });
 });
 
-// Import User at top level conceptually, but I can dynamically require it or just import at top. Let's do it right.
-import User from "../models/User.js";
+// Import User at top level conceptually, moved to the top.
 
 export const updateRiderProfile = TryCatch(async (req: AuthenticatedRequest, res) => {
   const user = req.user;

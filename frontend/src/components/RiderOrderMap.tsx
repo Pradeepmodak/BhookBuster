@@ -6,19 +6,20 @@ import * as L from "leaflet"; // core map library
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine"; // draws routes between points
 import axios from "axios";
-import { realtimeService } from "../main";
+import { realtimeService } from "../config";
 import type { LeafletWithRouting } from "../utils/leafletRouting";
+import { useSocket } from "../context/SocketContext";
 
 const routedLeaflet = L as LeafletWithRouting;
 
 const riderIcon = new L.DivIcon({
-  html: "🛵💨",
-  iconSize: [30, 30],
+  html: `<div style="background: #facc15; color: #000; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 16px;">R</div>`,
+  iconSize: [32, 32],
   className: "",
 });
 const deliveryIcon = new L.DivIcon({
-  html: "🏠",
-  iconSize: [30, 30],
+  html: `<div style="background: #22c55e; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 16px;">H</div>`,
+  iconSize: [32, 32],
   className: "",
 });
 
@@ -60,6 +61,7 @@ const Routing = ({
 };
 
 const RiderOrderMap = ({ order }: Props) => {
+  const { socket } = useSocket();
   const [riderLocation, setRiderLocation] = useState<[number, number] | null>(
     null,
   );
@@ -75,39 +77,27 @@ const RiderOrderMap = ({ order }: Props) => {
       return;
     }
 
-    const fetchLocation = () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const latitude = pos.coords.latitude;
-          const longitude = pos.coords.longitude;
-          setRiderLocation([latitude, longitude]);
-          axios.post(
-            `${realtimeService}/api/v1/internal/emit`,
-            {
-              event: "rider:location",
-              room: `user:${order.userId}`,
-              payload: { latitude, longitude },
-            },
-            {
-              headers: {
-                "x-internal-key": import.meta.env.VITE_INTERNAL_SERVICE_KEY,
-              },
-            },
-          );
-        },
-        (err) => console.log("Location Error: ", err),
-        {
-          enableHighAccuracy: true, // gps precision
-          maximumAge: 5000,        // cache time
-          timeout: 10000,         // timeout
-        },
-      );
-    };
-    fetchLocation();
-const interval = setInterval(fetchLocation, 10000);
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        setRiderLocation([latitude, longitude]);
+        if (socket) {
+          socket.emit("rider:location", {
+            room: `user:${order.userId}`,
+            payload: { latitude, longitude },
+          });
+        }
+      },
+      (err) => console.log("Location Error: ", err),
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+      }
+    );
 
-return () => clearInterval(interval);
-}, [hasDeliveryLocation, order.userId]);
+    return () => navigator.geolocation.clearWatch(watchId);
+}, [hasDeliveryLocation, order.userId, socket]);
 
 if (!hasDeliveryLocation || !riderLocation) return null;
   return (
@@ -135,3 +125,4 @@ if (!hasDeliveryLocation || !riderLocation) return null;
 };
 
 export default RiderOrderMap;
+

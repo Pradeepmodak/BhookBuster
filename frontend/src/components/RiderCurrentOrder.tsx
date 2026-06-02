@@ -1,6 +1,6 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { useState } from "react";
-import { riderService } from "../main";
+import { riderService } from "../config";
 import toast from "react-hot-toast";
 import type { IOrder } from "../types";
 import { BiStore, BiMapPin, BiWallet, BiPhoneCall, BiNavigation, BiCheckCircle } from "react-icons/bi";
@@ -151,3 +151,4 @@ const RiderCurrentOrder = ({ order, onStatusUpdate }: Props) => {
 };
 
 export default RiderCurrentOrder;
+

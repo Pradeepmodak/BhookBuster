@@ -141,18 +141,18 @@ export const fetchAdminStats = async () => {
             estimatedPlatformRevenue: 1,
           })
           .toArray(),
-        userCollection.countDocuments(),
+        userCollection.countDocuments({ role: { $ne: "admin" } }),
         userCollection.countDocuments({ role: "customer" }),
-        restaurantCollection.countDocuments(),
-        riderCollection.countDocuments(),
+        userCollection.countDocuments({ role: "seller" }),
+        userCollection.countDocuments({ role: "rider" }),
         restaurantCollection.countDocuments({ isVerified: false }),
         riderCollection.countDocuments({ isVerified: false }),
       ]);
 
-      const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-      const totalRiderPayout = paidOrders.reduce((sum, order) => sum + Number(order.riderAmount || 0), 0);
+      const totalRevenue = paidOrders.reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+      const totalRiderPayout = paidOrders.reduce((sum: number, order: any) => sum + Number(order.riderAmount || 0), 0);
       const totalPlatformSubsidy = paidOrders.reduce(
-        (sum, order) =>
+        (sum: number, order: any) =>
           sum +
           Number(
             order.platformSubsidy ??
@@ -161,7 +161,7 @@ export const fetchAdminStats = async () => {
         0,
       );
       const netPlatformRevenue = paidOrders.reduce(
-        (sum, order) =>
+        (sum: number, order: any) =>
           sum +
           Number(
             order.estimatedPlatformRevenue ??
@@ -174,29 +174,29 @@ export const fetchAdminStats = async () => {
       const ordersCount = paidOrders.length;
 
       const currentRevenue = paidOrders
-        .filter((order) => order.createdAt && new Date(order.createdAt) >= currentStart)
-        .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+        .filter((order: any) => order.createdAt && new Date(order.createdAt) >= currentStart)
+        .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
 
       const previousRevenue = paidOrders
-        .filter((order) => {
+        .filter((order: any) => {
           if (!order.createdAt) return false;
           const createdAt = new Date(order.createdAt);
           return createdAt >= previousStart && createdAt <= previousEnd;
         })
-        .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+        .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
 
       const currentOrders = paidOrders.filter(
-        (order) => order.createdAt && new Date(order.createdAt) >= currentStart,
+        (order: any) => order.createdAt && new Date(order.createdAt) >= currentStart,
       ).length;
 
-      const previousOrders = paidOrders.filter((order) => {
+      const previousOrders = paidOrders.filter((order: any) => {
         if (!order.createdAt) return false;
         const createdAt = new Date(order.createdAt);
         return createdAt >= previousStart && createdAt <= previousEnd;
       }).length;
 
       const peakOrderBuckets = new Map<number, number>();
-      paidOrders.forEach((order) => {
+      paidOrders.forEach((order: any) => {
         if (!order.createdAt) return;
         const hour = new Date(order.createdAt).getHours();
         peakOrderBuckets.set(hour, (peakOrderBuckets.get(hour) || 0) + 1);
@@ -243,7 +243,7 @@ export const fetchTopItems = async () => {
         .project({ _id: 1, image: 1, description: 1, price: 1 })
         .toArray();
 
-      const itemMap = new Map(menuItems.map((item) => [String(item._id), item]));
+      const itemMap = new Map(menuItems.map((item: any) => [String(item._id), item]));
 
       const topItems = await orderCollection
         .aggregate([
@@ -267,8 +267,8 @@ export const fetchTopItems = async () => {
         .toArray();
 
       return {
-        items: topItems.map((item) => {
-          const metadata = itemMap.get(item._id);
+        items: topItems.map((item: any) => {
+          const metadata: any = itemMap.get(item._id);
           return {
             id: item._id,
             name: item.name,
@@ -305,9 +305,9 @@ export const fetchOrdersTrend = async (days = 7) => {
           {
             $group: {
               _id: {
-                year: { $year: "$createdAt" },
-                month: { $month: "$createdAt" },
-                day: { $dayOfMonth: "$createdAt" },
+                year: { $year: { date: "$createdAt", timezone: "Asia/Kolkata" } },
+                month: { $month: { date: "$createdAt", timezone: "Asia/Kolkata" } },
+                day: { $dayOfMonth: { date: "$createdAt", timezone: "Asia/Kolkata" } },
               },
               revenue: { $sum: "$totalAmount" },
               orders: { $sum: 1 },
@@ -323,13 +323,13 @@ export const fetchOrdersTrend = async (days = 7) => {
         ])
         .toArray();
 
-      const trendMap = new Map(trendDocs.map((doc) => [`${doc._id.year}-${doc._id.month}-${doc._id.day}`, doc]));
+      const trendMap = new Map(trendDocs.map((doc: any) => [`${doc._id.year}-${doc._id.month}-${doc._id.day}`, doc]));
 
       const trend = Array.from({ length: normalizedDays }, (_, index) => {
         const date = new Date(start);
         date.setDate(start.getDate() + index);
         const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-        const entry = trendMap.get(key);
+        const entry: any = trendMap.get(key);
 
         return {
           label: formatDayLabel(date),

@@ -1,25 +1,54 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import axios from "axios";
 import { razorpay } from "../config/razorpay.js"
 import { verifyRazorpaySignature } from "../config/verifyRazorpay.js";
 import { publishPaymentSuccess } from "../config/payment.producer.js";
+import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 
-export const createRazorpayOrder = async (req: Request, res: Response) => {
+type OrderForPayment = {
+    orderId: string;
+    amount: number;
+    currency: string;
+    userId: string;
+};
+
+const fetchOrderForPayment = async (orderId: string): Promise<OrderForPayment> => {
+    const { data } = await axios.get(
+        `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
+        {
+            headers: {
+                "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+            },
+        }
+    );
+
+    return data;
+};
+
+const ensureOrderBelongsToUser = (
+    order: OrderForPayment,
+    userId: string | undefined
+) => {
+    if (!userId || order.userId !== userId) {
+        return false;
+    }
+
+    return true;
+};
+
+export const createRazorpayOrder = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { orderId } = req.body;
-        // calling another microservice
-        const { data } = await axios.get(
-            `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
-            {
-                // to get only trusted users // api key approach
-                headers: {
-                    "x-internal-key": process.env.INTERNAL_SERVICE_KEY
-                }
-            }
-        );
+        const order = await fetchOrderForPayment(orderId);
+
+        if (!ensureOrderBelongsToUser(order, req.user?._id)) {
+            return res.status(403).json({
+                message: "Forbidden",
+            });
+        }
 
         const razorpayOrder = await razorpay.orders.create({
-            amount: data.amount * 100,
+            amount: order.amount * 100,
             currency: "INR",
             receipt: orderId,
         });
@@ -36,7 +65,7 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
     }
 }
 
-export const verifyRazorpayPayment = async (req: Request, res: Response) => {
+export const verifyRazorpayPayment = async (req: AuthenticatedRequest, res: Response) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
     const isValid = verifyRazorpaySignature(
         razorpay_order_id,
@@ -48,6 +77,13 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
             message: "Payment verification failed",
         });
     }
+    const order = await fetchOrderForPayment(orderId);
+    if (!ensureOrderBelongsToUser(order, req.user?._id)) {
+        return res.status(403).json({
+            message: "Forbidden",
+        });
+    }
+
     // “Payment service publishes a success event to RabbitMQ. The message stays in the queue until a consumer processes and acknowledges it
     await publishPaymentSuccess({
         orderId,
@@ -65,18 +101,17 @@ dotenv.config();
 import Stripe from "stripe";
 // stripe instance banana hoga
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-export const payWithStripe = async (req: Request, res: Response) => {
+export const payWithStripe = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { orderId } = req.body;
 
-    const { data } = await axios.get(
-      `${process.env.RESTAURANT_SERVICE}/api/order/payment/${orderId}`,
-      {
-        headers: {
-          "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
-        },
-      }
-    );
+    const order = await fetchOrderForPayment(orderId);
+    if (!ensureOrderBelongsToUser(order, req.user?._id)) {
+      return res.status(403).json({
+        message: "Forbidden",
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
   payment_method_types: ["card"],
   mode: "payment",
@@ -88,7 +123,7 @@ export const payWithStripe = async (req: Request, res: Response) => {
         product_data: {
           name: "BhookBuster Food Order",
         },
-        unit_amount: data.amount * 100,
+        unit_amount: order.amount * 100,
       },
       quantity: 1,
     },
@@ -111,13 +146,19 @@ res.json({
 
 
 // check if the payment session id is valid or not and payment is successful or not
-export const verifyStripe = async (req: Request, res: Response) => {
+export const verifyStripe = async (req: AuthenticatedRequest, res: Response) => {
   const { sessionId } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (!session) {
+      return res.status(400).json({
+        message: "Payment verification failed",
+      });
+    }
+
+    if (session.payment_status !== "paid") {
       return res.status(400).json({
         message: "Payment verification failed",
       });
@@ -130,6 +171,19 @@ export const verifyStripe = async (req: Request, res: Response) => {
             message:"OrderId not found int the stripe session "
         })
     }
+    const order = await fetchOrderForPayment(orderId);
+    if (!ensureOrderBelongsToUser(order, req.user?._id)) {
+      return res.status(403).json({
+        message: "Forbidden",
+      });
+    }
+
+    if (session.amount_total !== order.amount * 100 || session.currency !== order.currency.toLowerCase()) {
+      return res.status(400).json({
+        message: "Payment verification failed",
+      });
+    }
+
     await publishPaymentSuccess({
   orderId,
   paymentId: sessionId,

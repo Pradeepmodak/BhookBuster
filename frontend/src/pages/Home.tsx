@@ -3,8 +3,9 @@ import { useAppData } from "../context/AppContext";
 import { useEffect, useMemo, useState } from "react";
 import type { IRestaurant } from "../types";
 import axios from "axios";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import RestaurantCard from "../components/RestaurantCard";
+import DishSearchResultCard from "../components/DishSearchResultCard";
 import { motion } from "framer-motion";
 import { FiFilter, FiMapPin, FiSearch, FiStar, FiTrendingUp, FiZap } from "react-icons/fi";
 
@@ -21,6 +22,9 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"smart" | "distance" | "name">("smart");
+  const [semanticResults, setSemanticResults] = useState<any[]>([]);
+  const [forYou, setForYou] = useState<any[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   const getDistanceKm = ({
     lat1,
@@ -48,7 +52,7 @@ const Home = () => {
     return +(R * c).toFixed(2);
   };
 
-  const fetchRestaurants = async () => {
+  const fetchRestaurants = async (signal?: AbortSignal) => {
     if (!location?.latitude || !location?.longitude) {
       setLoading(false);
       return;
@@ -56,26 +60,95 @@ const Home = () => {
 
     try {
       setLoading(true);
-      const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
+      if (search.trim()) {
+        const { data } = await axios.post(
+          `${restaurantService}/api/search/semantic`,
+          {
+            query: search,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            radiusKm: 15,
+          },
+          {
+            signal,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        if (!signal?.aborted) {
+          setSemanticResults(data.results ?? []);
+          setRestaurants([]);
+        }
+      } else {
+        if (!signal?.aborted) {
+          setSemanticResults([]);
+        }
+        const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
+          signal,
+          params: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            search,
+          },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (!signal?.aborted) {
+          setRestaurants(data.restaurants ?? []);
+        }
+      }
+    } catch (error: any) {
+      if (error?.name !== "CanceledError") {
+        console.log(error);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const fetchRecommendations = async (signal?: AbortSignal) => {
+    const token = localStorage.getItem("token");
+    if (!token || !location?.latitude || !location?.longitude) return;
+
+    try {
+      setLoadingRecommendations(true);
+      const { data } = await axios.get(`${restaurantService}/api/recommendations/home`, {
+        signal,
         params: {
           latitude: location.latitude,
           longitude: location.longitude,
-          search,
+          radiusKm: 15,
         },
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
-      setRestaurants(data.restaurants ?? []);
-    } catch (error) {
-      console.log(error);
+      if (!signal?.aborted) {
+        setForYou(data.forYou ?? []);
+      }
+    } catch (error: any) {
+      if (error?.name !== "CanceledError") {
+        console.error("Failed to fetch recommendations:", error);
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoadingRecommendations(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchRestaurants();
+    const controller = new AbortController();
+    fetchRestaurants(controller.signal);
+    fetchRecommendations(controller.signal);
+    
+    return () => {
+      controller.abort();
+    };
   }, [location, search]);
 
   const visibleRestaurants = useMemo(() => {
@@ -102,17 +175,20 @@ const Home = () => {
   }, [restaurants, showOpenOnly, sortBy]);
 
   const insights = useMemo(() => {
-    const openCount = restaurants.filter((restaurant) => restaurant.isOpen).length;
-    const nearest = [...restaurants].sort(
-      (a, b) => Number(a.distanceKm ?? 0) - Number(b.distanceKm ?? 0),
+    const listToUse = search.trim() ? semanticResults.map((r: any) => r.restaurant) : restaurants;
+    
+    const openCount = listToUse.filter((restaurant: any) => restaurant?.isOpen).length;
+    const nearest = [...listToUse].filter((r: any) => r).sort(
+      (a: any, b: any) => Number(a.distanceKm ?? 0) - Number(b.distanceKm ?? 0),
     )[0];
 
     return {
       openCount,
       nearestName: nearest?.name || "Discover nearby places",
       nearestDistance: nearest ? `${nearest.distanceKm} km` : "No results yet",
+      restaurantCount: listToUse.length
     };
-  }, [restaurants]);
+  }, [restaurants, semanticResults, search]);
 
   if (loadingLocation) {
     return (
@@ -198,7 +274,7 @@ const Home = () => {
 
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
             {[
-              { label: "Restaurants", value: restaurants.length, icon: FiSearch },
+              { label: "Restaurants", value: insights.restaurantCount, icon: FiSearch },
               { label: "Open now", value: insights.openCount, icon: FiStar },
               { label: "Discovery score", value: `${Math.min(98, 72 + insights.openCount * 3)}%`, icon: FiTrendingUp },
             ].map((item) => (
@@ -234,45 +310,122 @@ const Home = () => {
         </select>
       </section>
 
-      <div className="mb-6 mt-8">
-        <h2 className="text-2xl font-semibold">Restaurants near you</h2>
-        <p className="mt-1 text-neutral-400">{visibleRestaurants.length} curated results for your delivery zone</p>
-      </div>
+      {/* For You Personalized Recommendations */}
+      {forYou.length > 0 && !search && (
+        <section className="mb-10 mt-8">
+          <div className="mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#facc15]/20 bg-[#facc15]/10 px-3 py-1 text-xs font-semibold text-[#facc15] uppercase tracking-wider mb-2">
+              <FiStar />
+              Personalized Picks
+            </div>
+            <h2 className="text-2xl font-bold text-white">AI Tailored Recommendations 'For You'</h2>
+            <p className="text-sm text-neutral-400">Based on your past orders, clicks, and taste profile</p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {forYou.slice(0, 6).map((item) => {
+              const [resLng, resLat] = item.restaurant.autoLocation?.coordinates || [0, 0];
+              const distance = (resLng && resLat) ? getDistanceKm({
+                lat1: location.latitude,
+                lon1: location.longitude,
+                lat2: resLat,
+                lon2: resLng,
+              }) : undefined;
 
-      {visibleRestaurants.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {visibleRestaurants.map((res) => {
-            const [resLng, resLat] = res.autoLocation.coordinates;
+              return (
+                <DishSearchResultCard
+                  key={item._id}
+                  dish={item}
+                  restaurant={{ ...item.restaurant, distanceKm: distance }}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-            const distance = getDistanceKm({
-              lat1: location.latitude,
-              lon1: location.longitude,
-              lat2: resLat,
-              lon2: resLng,
-            });
-
-            return (
-              <RestaurantCard
-                key={res._id}
-                id={res._id}
-                name={res.name}
-                image={res.image ?? ""}
-                distance={`${distance}`}
-                isOpen={res.isOpen}
-                description={res.description}
-                address={res.autoLocation?.formattedAddress}
-                isVerified={res.isVerified}
-              />
-            );
-          })}
+      {search && (
+        <div className="mb-6 mt-8">
+          <h2 className="text-2xl font-semibold">AI Semantic Search Results</h2>
+          <p className="mt-1 text-neutral-400">
+            Found {semanticResults.reduce((acc, curr) => acc + (curr.dishes?.length || 0), 0)} semantic matches for "{search}"
+          </p>
         </div>
+      )}
+
+      {search ? (
+        semanticResults.length > 0 ? (
+          <div className="space-y-8">
+            {semanticResults.map((group) => (
+              <div key={group.restaurant._id} className="space-y-4 rounded-[28px] border border-white/10 bg-[#161616] p-6">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{group.restaurant.name}</h3>
+                    <p className="text-xs text-neutral-400">{group.restaurant.autoLocation?.formattedAddress}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-[#facc15]">{group.restaurant.distanceKm?.toFixed(1)} km away</span>
+                </div>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {group.dishes.map((dish: any) => (
+                    <DishSearchResultCard
+                      key={dish._id}
+                      dish={dish}
+                      restaurant={group.restaurant}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+            No semantic food matches found for "{search}"
+          </div>
+        )
       ) : (
-        <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
-          No restaurant found
-        </div>
+        /* Normal Restaurants list */
+        <>
+          <div className="mb-6 mt-8">
+            <h2 className="text-2xl font-semibold">Restaurants near you</h2>
+            <p className="mt-1 text-neutral-400">{visibleRestaurants.length} curated results for your delivery zone</p>
+          </div>
+
+          {visibleRestaurants.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {visibleRestaurants.map((res) => {
+                const [resLng, resLat] = res.autoLocation.coordinates;
+
+                const distance = getDistanceKm({
+                  lat1: location.latitude,
+                  lon1: location.longitude,
+                  lat2: resLat,
+                  lon2: resLng,
+                });
+
+                return (
+                  <RestaurantCard
+                    key={res._id}
+                    id={res._id}
+                    name={res.name}
+                    image={res.image ?? ""}
+                    distance={`${distance}`}
+                    isOpen={res.isOpen}
+                    description={res.description}
+                    address={res.autoLocation?.formattedAddress}
+                    isVerified={res.isVerified}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+              No restaurant found
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
 export default Home;
+

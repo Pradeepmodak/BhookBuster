@@ -1,6 +1,6 @@
 import express from "express"
 import { isAuth } from "../middlewares/isAuth.js";
-import { acceptOrder, addRiderProfile, fetchDeliveryQueue, fetchMyCurrentOrder, fetchMyProfile, toggleRiderAvailability, updateOrderStatus, updateRiderProfile } from "../controllers/rider.js";
+import { acceptOrder, addRiderProfile, fetchMyCurrentOrder, fetchMyProfile, fetchDeliveryQueue, toggleRiderAvailability, updateOrderStatus, updateRiderProfile } from "../controllers/rider.js";
 import uploadFile from "../middlewares/multer.js";
 
 const router=express.Router();

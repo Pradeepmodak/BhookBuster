@@ -19,7 +19,7 @@ export const connectRedis = async () => {
   try {
     client = createClient({ url: getRedisUrl() });
 
-    client.on("error", (error) => {
+    client.on("error", (error: any) => {
       ready = false;
       console.error("Redis error:", error.message);
     });

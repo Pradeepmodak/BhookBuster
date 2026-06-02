@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useAppData } from "../context/AppContext";
 import { useSocket } from "../context/SocketContext";
 import axios from "axios";
-import { riderService } from "../main";
+import { riderService } from "../config";
 import toast from "react-hot-toast";
 import { BiUpload } from "react-icons/bi";
 import audio from "../assets/order_received.mp3";
@@ -91,7 +91,7 @@ const RiderDashboard = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setProfile(data?.rider || null);
+      setProfile(data?.rider || (data?._id ? data : null));
     } catch {
       setProfile(null);
     } finally {
@@ -213,7 +213,11 @@ const RiderDashboard = () => {
             },
           });
           toast.success(data.message);
-          fetchProfile();
+          if (data.riderProfile) {
+            setProfile(data.riderProfile);
+          } else {
+            fetchProfile();
+          }
         } catch (error) {
           toast.error(getErrorMessage(error, "Failed to submit profile"));
         } finally {
@@ -445,3 +449,4 @@ const RiderDashboard = () => {
 };
 
 export default RiderDashboard;
+

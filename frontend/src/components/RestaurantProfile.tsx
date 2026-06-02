@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { BiEdit, BiMapPin, BiSave, BiUpload } from "react-icons/bi";
 import { FiLogOut, FiPower } from "react-icons/fi";
 import type { IRestaurant } from "../types.ts";
-import { restaurantService } from "../main";
+import { restaurantService } from "../config";
 import { useAppData } from "../context/AppContext.tsx";
 import VerificationBadge from "./VerificationBadge";
 import Button from "./ui/Button";
@@ -241,3 +241,4 @@ const RestaurantProfile = ({ restaurant, isSeller, onUpdate }: Props) => {
 };
 
 export default RestaurantProfile;
+

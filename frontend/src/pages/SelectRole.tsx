@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAppData } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { authService } from "../main";
+import { authService } from "../config";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { FiHome, FiShoppingBag, FiTruck } from "react-icons/fi";
@@ -30,9 +30,17 @@ const roleConfig = {
 const SelectRole = () => {
   const [role, setRole] = useState<Role>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser } = useAppData();
+  const [shouldNavigate, setShouldNavigate] = useState(false);
+  const { user, setUser } = useAppData();
   const navigate = useNavigate();
   const roles: Exclude<Role, null>[] = ["customer", "rider", "seller"];
+
+  useEffect(() => {
+    if (shouldNavigate && user?.role) {
+      navigate("/", { replace: true });
+      setShouldNavigate(false);
+    }
+  }, [user, shouldNavigate, navigate]);
 
   const addRole = async () => {
     try {
@@ -48,7 +56,7 @@ const SelectRole = () => {
       );
       localStorage.setItem("token", data.token);
       setUser(data.user);
-      navigate("/", { replace: true });
+      setShouldNavigate(true);
     } catch (error) {
       console.log(error);
       alert("Error adding role");
@@ -136,3 +144,4 @@ const SelectRole = () => {
 };
 
 export default SelectRole;
+

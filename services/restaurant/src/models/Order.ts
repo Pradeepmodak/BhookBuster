@@ -9,9 +9,6 @@ export interface IOrder extends Document {
     riderName: string | null;
     distance:number;
     riderAmount:number;
-    customerDeliveryFee:number;
-    platformSubsidy:number;
-    estimatedPlatformRevenue:number;
 
     items: {
         itemId: string;
@@ -24,6 +21,10 @@ export interface IOrder extends Document {
     deliveryFee: number;
     platformFee: number;
     totalAmount: number;
+    
+    customerDeliveryFee?: number;
+    platformSubsidy?: number;
+    estimatedPlatformRevenue?: number;
 
     addressId: string;
 
@@ -73,18 +74,6 @@ riderPhone: {
 riderAmount:{
     type:Number,
     required:true,
-},
-customerDeliveryFee: {
-  type: Number,
-  required: true,
-},
-platformSubsidy: {
-  type: Number,
-  required: true,
-},
-estimatedPlatformRevenue: {
-  type: Number,
-  required: true,
 },
 distance:{
     type:Number,

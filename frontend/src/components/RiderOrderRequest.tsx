@@ -1,6 +1,6 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { useEffect, useState } from "react";
-import { riderService } from "../main";
+import { riderService } from "../config";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "../utils/http";
 
@@ -72,3 +72,4 @@ const acceptOrder = async () => {
 };
 
 export default RiderOrderRequest;
+
