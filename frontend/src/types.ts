@@ -80,6 +80,12 @@ export interface IMenuItem {
     updatedAt: Date;
 }
 
+export interface IDishSearchResult extends IMenuItem {
+    dietaryFlags?: string[];
+}
+
+export type IRecommendedMenuItem = IDishSearchResult;
+
 export interface ICart {
    _id:string,
    userId:string;

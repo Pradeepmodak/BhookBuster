@@ -118,7 +118,7 @@ const DishSearchResultCard = ({ dish, restaurant }: Props) => {
           )}
           {dish.dietaryFlags && dish.dietaryFlags.length > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {dish.dietaryFlags.map((flag) => (
+              {dish.dietaryFlags.map((flag: string) => (
                 <span
                   key={flag}
                   className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/60"
