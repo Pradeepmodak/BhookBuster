@@ -1,0 +1,146 @@
+services:
+  - type: web
+    name: admin
+    env: node
+    rootDir: services/admin
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 2000
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: DB_NAME
+        value: BhookBuster
+
+  - type: web
+    name: auth
+    env: node
+    rootDir: services/auth
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+  - type: web
+    name: realtime
+    env: node
+    rootDir: services/realtime
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: INTERNAL_SERVICE_KEY
+        sync: false
+
+  - type: web
+    name: restaurant
+    env: node
+    rootDir: services/restaurant
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_SERVICE_KEY
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+      - key: UTILS_SERVICE
+        sync: false
+      - key: REALTIME_SERVICE
+        sync: false
+      - key: PAYMENT_QUEUE
+        value: payment_event
+      - key: RIDER_QUEUE
+        value: rider_queue
+      - key: ORDER_READY_QUEUE
+        value: order_ready_queue
+
+  - type: web
+    name: rider
+    env: node
+    rootDir: services/rider
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5001
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_SERVICE_KEY
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RESTAURANT_SERVICE
+        sync: false
+      - key: REALTIME_SERVICE
+        sync: false
+      - key: UTILS_SERVICE_URL
+        sync: false
+      - key: RIDER_QUEUE
+        value: rider_queue
+      - key: ORDER_READY_QUEUE
+        value: order_ready_queue
+
+  - type: web
+    name: utils
+    env: node
+    rootDir: services/utils
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 7000
+      - key: INTERNAL_SERVICE_KEY
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RESTAURANT_SERVICE
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CLOUD_NAME
+        sync: false
+      - key: CLOUD_API_KEY
+        sync: false
+      - key: CLOUD_API_SECRET
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_KEY_ID
+        sync: false
+      - key: PAYMENT_QUEUE
+        value: payment_event

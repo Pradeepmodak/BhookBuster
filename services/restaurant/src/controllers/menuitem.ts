@@ -6,6 +6,7 @@ import axios from "axios";
 import uploadFile from "../middlewares/multer.js";
 import MenuItems from "../models/MenuItems.js";
 import { generateMenuEmbedding, toStringArray } from "../lib/embeddings.js";
+import { redisClient } from "../config/redis.js";
 
 
 export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -71,6 +72,9 @@ try {
 } catch (error: any) {
     console.warn("⚠️ AI Gateway embedding generation failed for new menu item, but the item was created successfully:", error.message);
 }
+
+await redisClient.del(`menu:${restaurant._id.toString()}`);
+
 res.status(201).json({
     message:"Item added Successfully",
     item,
@@ -84,7 +88,14 @@ export const getAllItems = TryCatch(async (req: AuthenticatedRequest, res) => {
             message: "Id is required",
         });
     }
+
+    const cachedMenu = await redisClient.get(`menu:${id}`);
+    if (cachedMenu) {
+        return res.status(200).json(JSON.parse(cachedMenu));
+    }
+
     const items = await MenuItems.find({ restaurantId: id });
+    await redisClient.setex(`menu:${id}`, 3600, JSON.stringify(items));
     res.status(200).json(items);
 });
 
@@ -114,6 +125,7 @@ if(!restaurant){
 }
 
 await item.deleteOne();
+await redisClient.del(`menu:${restaurant._id.toString()}`);
 
 res.status(200).json({
     message:"Menu item deleted successfully",
@@ -147,6 +159,8 @@ if(!restaurant){
 
 item.isAvailable=!item.isAvailable;
 await item.save();
+await redisClient.del(`menu:${restaurant._id.toString()}`);
+
 res.status(200).json({
 message:`Item Marked as ${item.isAvailable ? "available" : "unavailable"}`,
 item,
