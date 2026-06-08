@@ -9,11 +9,11 @@ services:
     envVars:
       - key: PORT
         value: 2000
+      - key: CORS_ORIGIN
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
-        sync: false
-      - key: REDIS_URL
         sync: false
       - key: DB_NAME
         value: BhookBuster
@@ -28,6 +28,8 @@ services:
     envVars:
       - key: PORT
         value: 5000
+      - key: CORS_ORIGIN
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -47,6 +49,8 @@ services:
     envVars:
       - key: PORT
         value: 4000
+      - key: CORS_ORIGIN
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: INTERNAL_SERVICE_KEY
@@ -62,6 +66,8 @@ services:
     envVars:
       - key: PORT
         value: 3000
+      - key: CORS_ORIGIN
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -82,6 +88,12 @@ services:
         value: rider_queue
       - key: ORDER_READY_QUEUE
         value: order_ready_queue
+      - key: USER_EVENT_QUEUE
+        value: user_event_queue
+      - key: AI_GATEWAY_URL
+        sync: false
+      - key: GATEWAY_HMAC_SECRET
+        sync: false
 
   - type: web
     name: rider
@@ -93,6 +105,8 @@ services:
     envVars:
       - key: PORT
         value: 5001
+      - key: CORS_ORIGIN
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -124,6 +138,10 @@ services:
     envVars:
       - key: PORT
         value: 7000
+      - key: CORS_ORIGIN
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
       - key: INTERNAL_SERVICE_KEY
         sync: false
       - key: RABBITMQ_URL
