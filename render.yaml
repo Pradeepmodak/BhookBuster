@@ -10,7 +10,7 @@ services:
       - key: PORT
         value: 2000
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -29,7 +29,7 @@ services:
       - key: PORT
         value: 5000
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -50,7 +50,7 @@ services:
       - key: PORT
         value: 4000
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: INTERNAL_SERVICE_KEY
@@ -67,7 +67,7 @@ services:
       - key: PORT
         value: 3000
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -106,7 +106,7 @@ services:
       - key: PORT
         value: 5001
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -139,7 +139,7 @@ services:
       - key: PORT
         value: 7000
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: JWT_SECRET_KEY
         sync: false
       - key: INTERNAL_SERVICE_KEY
@@ -179,7 +179,7 @@ services:
     envVars:
       - key: PORT
         value: 5010
-      - key: GOOGLE_AI_API_KEY
+      - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false
