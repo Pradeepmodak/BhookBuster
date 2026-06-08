@@ -2,6 +2,7 @@ services:
   - type: web
     name: admin
     env: node
+    plan: free
     rootDir: services/admin
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -20,6 +21,7 @@ services:
   - type: web
     name: auth
     env: node
+    plan: free
     rootDir: services/auth
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -38,6 +40,7 @@ services:
   - type: web
     name: realtime
     env: node
+    plan: free
     rootDir: services/realtime
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -52,6 +55,7 @@ services:
   - type: web
     name: restaurant
     env: node
+    plan: free
     rootDir: services/restaurant
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -82,6 +86,7 @@ services:
   - type: web
     name: rider
     env: node
+    plan: free
     rootDir: services/rider
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -112,6 +117,7 @@ services:
   - type: web
     name: utils
     env: node
+    plan: free
     rootDir: services/utils
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -144,3 +150,20 @@ services:
         sync: false
       - key: PAYMENT_QUEUE
         value: payment_event
+
+  - type: web
+    name: ai-gateway
+    env: node
+    plan: free
+    rootDir: services/ai-gateway
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5010
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GATEWAY_HMAC_SECRET
+        sync: false
