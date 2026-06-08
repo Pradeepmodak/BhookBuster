@@ -24,7 +24,6 @@ const Home = () => {
   const [sortBy, setSortBy] = useState<"smart" | "distance" | "name">("smart");
   const [semanticResults, setSemanticResults] = useState<any[]>([]);
   const [forYou, setForYou] = useState<any[]>([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   const getDistanceKm = ({
     lat1,
@@ -44,9 +43,9 @@ const Home = () => {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return +(R * c).toFixed(2);
@@ -84,19 +83,36 @@ const Home = () => {
         if (!signal?.aborted) {
           setSemanticResults([]);
         }
-        const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
-          signal,
-          params: {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            search,
-          },
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        if (!signal?.aborted) {
-          setRestaurants(data.restaurants ?? []);
+        const token = localStorage.getItem("token");
+        if (token) {
+          const { data } = await axios.get(`${restaurantService}/api/recommendations/home`, {
+            signal,
+            params: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              radiusKm: 15,
+            },
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (!signal?.aborted) {
+            setRestaurants(data.popularNearby ?? []);
+            setForYou(data.forYou ?? []);
+          }
+        } else {
+          const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
+            signal,
+            params: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              search,
+            },
+          });
+          if (!signal?.aborted) {
+            setRestaurants(data.restaurants ?? []);
+            setForYou([]);
+          }
         }
       }
     } catch (error: any) {
@@ -110,42 +126,10 @@ const Home = () => {
     }
   };
 
-  const fetchRecommendations = async (signal?: AbortSignal) => {
-    const token = localStorage.getItem("token");
-    if (!token || !location?.latitude || !location?.longitude) return;
-
-    try {
-      setLoadingRecommendations(true);
-      const { data } = await axios.get(`${restaurantService}/api/recommendations/home`, {
-        signal,
-        params: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          radiusKm: 15,
-        },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!signal?.aborted) {
-        setForYou(data.forYou ?? []);
-      }
-    } catch (error: any) {
-      if (error?.name !== "CanceledError") {
-        console.error("Failed to fetch recommendations:", error);
-      }
-    } finally {
-      if (!signal?.aborted) {
-        setLoadingRecommendations(false);
-      }
-    }
-  };
-
   useEffect(() => {
     const controller = new AbortController();
     fetchRestaurants(controller.signal);
-    fetchRecommendations(controller.signal);
-    
+
     return () => {
       controller.abort();
     };
@@ -176,7 +160,7 @@ const Home = () => {
 
   const insights = useMemo(() => {
     const listToUse = search.trim() ? semanticResults.map((r: any) => r.restaurant) : restaurants;
-    
+
     const openCount = listToUse.filter((restaurant: any) => restaurant?.isOpen).length;
     const nearest = [...listToUse].filter((r: any) => r).sort(
       (a: any, b: any) => Number(a.distanceKm ?? 0) - Number(b.distanceKm ?? 0),
