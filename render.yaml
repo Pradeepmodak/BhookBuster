@@ -10,7 +10,7 @@ services:
       - key: PORT
         value: 2000
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -31,7 +31,7 @@ services:
       - key: PORT
         value: 5000
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -52,7 +52,7 @@ services:
       - key: PORT
         value: 4000
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: INTERNAL_SERVICE_KEY
@@ -69,7 +69,7 @@ services:
       - key: PORT
         value: 3000
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -108,7 +108,7 @@ services:
       - key: PORT
         value: 5001
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: MONGODB_URI
@@ -141,7 +141,7 @@ services:
       - key: PORT
         value: 7000
       - key: CORS_ORIGIN
-        value: "*"
+        value: https://bhookbuster.vercel.app
       - key: JWT_SECRET_KEY
         sync: false
       - key: INTERNAL_SERVICE_KEY
