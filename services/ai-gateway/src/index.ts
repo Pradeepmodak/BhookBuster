@@ -14,6 +14,9 @@ app.get("/health", (_req: any, res: any) => {
   res.json({ status: "ok", service: "ai-gateway" });
 });
 
+import { aiGatewayLimiter } from "./middlewares/rateLimit.js";
+app.use(aiGatewayLimiter);
+
 app.use(
   express.json({
     limit: "1mb",

@@ -35,6 +35,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(performanceLogger);
 
+import { restaurantGlobalLimiter } from './middlewares/rateLimit.js';
+app.use(restaurantGlobalLimiter);
+
 app.use("/api/restaurant",restaurantRoutes);
 app.use("/api/item",itemRoutes);
 app.use("/api/cart",cartRoutes);
