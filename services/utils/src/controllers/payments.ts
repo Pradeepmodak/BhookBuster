@@ -48,7 +48,7 @@ export const createRazorpayOrder = async (req: AuthenticatedRequest, res: Respon
         }
 
         const razorpayOrder = await razorpay.orders.create({
-            amount: order.amount * 100,
+            amount: Math.round(order.amount * 100),
             currency: "INR",
             receipt: orderId,
         });
@@ -123,7 +123,7 @@ export const payWithStripe = async (req: AuthenticatedRequest, res: Response) =>
         product_data: {
           name: "BhookBuster Food Order",
         },
-        unit_amount: order.amount * 100,
+        unit_amount: Math.round(order.amount * 100),
       },
       quantity: 1,
     },
@@ -178,7 +178,7 @@ export const verifyStripe = async (req: AuthenticatedRequest, res: Response) => 
       });
     }
 
-    if (session.amount_total !== order.amount * 100 || session.currency !== order.currency.toLowerCase()) {
+    if (session.amount_total !== Math.round(order.amount * 100) || session.currency !== order.currency.toLowerCase()) {
       return res.status(400).json({
         message: "Payment verification failed",
       });
