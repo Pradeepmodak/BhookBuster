@@ -131,17 +131,18 @@ export const payWithStripe = async (req: AuthenticatedRequest, res: Response) =>
   metadata:{
     orderId,
   },
-success_url: `${process.env.FRONTEND_URL}/ordersuccess/{CHECKOUT_SESSION_ID}`,
-cancel_url: `${process.env.FRONTEND_URL}/checkout`,
+  success_url: `${process.env.FRONTEND_URL}/ordersuccess/{CHECKOUT_SESSION_ID}`,
+  cancel_url: `${process.env.FRONTEND_URL}/checkout`,
 });
 res.json({
   url: session.url,
 });
-  } catch (error) {
-      res.status(500).json({
-    message: "stripe payment failed",
-  })
-    }
+  } catch (error: any) {
+    console.error("❌ Stripe payment creation failed:", error.message || error);
+    res.status(500).json({
+      message: "stripe payment failed",
+    });
+  }
 };
 
 
@@ -159,6 +160,7 @@ export const verifyStripe = async (req: AuthenticatedRequest, res: Response) => 
     }
 
     if (session.payment_status !== "paid") {
+      console.warn(`⚠️ Stripe verification failed for session ${sessionId}: Payment status is ${session.payment_status}`);
       return res.status(400).json({
         message: "Payment verification failed",
       });
@@ -193,7 +195,8 @@ export const verifyStripe = async (req: AuthenticatedRequest, res: Response) => 
 res.json({
   message: "payment successful",
 });
-}catch (error) {
+}catch (error: any) {
+    console.error(`❌ Stripe verification error for session ${sessionId}:`, error.message || error);
     res.status(500).json({
       message: "Stripe payment failed",
     });
