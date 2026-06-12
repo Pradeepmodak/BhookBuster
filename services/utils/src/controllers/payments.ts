@@ -112,6 +112,16 @@ export const payWithStripe = async (req: AuthenticatedRequest, res: Response) =>
       });
     }
 
+    if (!process.env.FRONTEND_URL) {
+      console.error("❌ FRONTEND_URL is missing in environment variables");
+      return res.status(500).json({ message: "Server configuration error: FRONTEND_URL missing" });
+    }
+    
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("❌ STRIPE_SECRET_KEY is missing in environment variables");
+      return res.status(500).json({ message: "Server configuration error: STRIPE_SECRET_KEY missing" });
+    }
+
     const session = await stripe.checkout.sessions.create({
   payment_method_types: ["card"],
   mode: "payment",
@@ -138,9 +148,10 @@ res.json({
   url: session.url,
 });
   } catch (error: any) {
-    console.error("❌ Stripe payment creation failed:", error.message || error);
+    console.error("❌ Stripe payment creation failed:", error.response?.data || error.message || error);
     res.status(500).json({
       message: "stripe payment failed",
+      error: error.message
     });
   }
 };
