@@ -14,8 +14,8 @@ app.get("/health", (_req: any, res: any) => {
   res.json({ status: "ok", service: "ai-gateway" });
 });
 
-import { aiGatewayLimiter } from "./middlewares/rateLimit.js";
-app.use(aiGatewayLimiter);
+// Rate limit removed: AI gateway is an internal service protected by serviceAuth. 
+// Rate limiting by IP here blocks the entire restaurant service since all requests come from the same proxy/server IP.
 
 app.use(
   express.json({
