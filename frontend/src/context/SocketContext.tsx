@@ -31,7 +31,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       auth: {
         token: localStorage.getItem("token"),
       },
-      transports: ["websocket"],
     });
 
     socketRef.current = nextSocket;
