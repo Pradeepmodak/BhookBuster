@@ -38,9 +38,27 @@ type GroupedResult = {
   dishes: SemanticMenuResult[];
 };
 
+type RestaurantResult = {
+  _id: string;
+  name: string;
+  image?: string;
+  isOpen: boolean;
+  isVerified: boolean;
+  distanceKm: number;
+  autoLocation?: {
+    formattedAddress?: string;
+  };
+  vectorScore: number;
+  distanceScore: number;
+  blendedScore: number;
+  cuisineTypes?: string[];
+};
+
 export default function Search() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GroupedResult[]>([]);
+  const [restaurantResults, setRestaurantResults] = useState<RestaurantResult[]>([]);
+  const [searchType, setSearchType] = useState<"dishes" | "restaurants">("dishes");
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -72,9 +90,15 @@ export default function Search() {
     const lng = location?.lng || 85.3441;
 
     setLoading(true);
+    setResults([]);
+    setRestaurantResults([]);
     try {
+      const endpoint = searchType === "dishes" 
+        ? `${restaurantService}/api/search/semantic` 
+        : `${restaurantService}/api/search/restaurants`;
+
       const { data } = await axios.post(
-        `${restaurantService}/api/search/semantic`,
+        endpoint,
         {
           query,
           latitude: lat,
@@ -90,7 +114,11 @@ export default function Search() {
       );
 
       if (data.success) {
-        setResults(data.results);
+        if (searchType === "dishes") {
+          setResults(data.results);
+        } else {
+          setRestaurantResults(data.results);
+        }
       }
     } catch (error: any) {
       console.error(error);
@@ -136,10 +164,38 @@ export default function Search() {
               )}
             </button>
           </form>
+
+          {/* Toggle Switch */}
+          <div className="flex justify-center mt-6">
+            <div className="bg-[#1a1a1a] p-1 rounded-full border border-[#333] inline-flex shadow-inner">
+              <button
+                type="button"
+                onClick={() => setSearchType("dishes")}
+                className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
+                  searchType === "dishes" 
+                    ? "bg-[#facc15] text-black shadow-lg scale-105" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Find Dishes
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchType("restaurants")}
+                className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
+                  searchType === "restaurants" 
+                    ? "bg-[#facc15] text-black shadow-lg scale-105" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Find Restaurants
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Search Results */}
-        {results.length > 0 && (
+        {searchType === "dishes" && results.length > 0 && (
           <div className="space-y-12">
             {results.map((group, idx) => (
               <div key={idx} className="bg-[#141414] rounded-3xl overflow-hidden border border-[#222] shadow-2xl transition-transform hover:-translate-y-1 duration-300">
@@ -228,8 +284,54 @@ export default function Search() {
           </div>
         )}
 
+        {/* Restaurant Results */}
+        {searchType === "restaurants" && restaurantResults.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {restaurantResults.map((restaurant, idx) => (
+              <Link key={idx} to={`/restaurant/${restaurant._id}`} className="bg-[#141414] rounded-3xl p-6 border border-[#222] shadow-2xl transition-transform hover:-translate-y-1 hover:border-[#facc15]/50 duration-300 block group">
+                <div className="flex items-start gap-4">
+                  {restaurant.image ? (
+                    <img src={restaurant.image} alt={restaurant.name} className="w-24 h-24 rounded-2xl object-cover shadow-lg border border-[#333]" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-2xl bg-[#222] flex items-center justify-center border border-[#333]">
+                      <BiRestaurant className="w-10 h-10 text-gray-500" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#222] border border-[#333] text-xs font-medium text-gray-300">
+                        <MdStar className="text-[#facc15] w-3.5 h-3.5" />
+                        {(restaurant.blendedScore * 100).toFixed(0)}% Match
+                      </span>
+                      {restaurant.isVerified && <MdVerified className="text-blue-400 w-5 h-5" />}
+                    </div>
+                    <h3 className="text-xl font-bold text-white mt-2 mb-1 group-hover:text-[#facc15] transition-colors">{restaurant.name}</h3>
+                    <div className="text-sm text-gray-400 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <BiMap className="w-4 h-4 text-[#facc15]" />
+                        {restaurant.distanceKm.toFixed(1)} km away
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <BiTime className="w-4 h-4 text-[#facc15]" />
+                        {restaurant.isOpen ? (
+                          <span className="text-green-400">Open Now</span>
+                        ) : (
+                          <span className="text-red-400">Closed</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
         {/* Empty State */}
-        {!loading && results.length === 0 && query && (
+        {!loading && query && (
+          (searchType === "dishes" && results.length === 0) || 
+          (searchType === "restaurants" && restaurantResults.length === 0)
+        ) && (
           <div className="text-center py-20 bg-[#141414] rounded-3xl border border-[#222]">
             <BiSearch className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">No exact matches found</h3>
