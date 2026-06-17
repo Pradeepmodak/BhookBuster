@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { BiSearch, BiMap, BiTime, BiRestaurant } from "react-icons/bi";
 import { MdVerified, MdStar } from "react-icons/md";
 import { TbLeaf } from "react-icons/tb";
@@ -61,8 +61,6 @@ export default function Search() {
   const [searchType, setSearchType] = useState<"dishes" | "restaurants">("dishes");
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (navigator.geolocation) {
