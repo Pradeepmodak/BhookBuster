@@ -591,3 +591,183 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
     }
   });
 });
+
+/**
+ * Semantic search specifically for discovering restaurants based on a vibe or concept.
+ * E.g., "A romantic Italian place open late"
+ */
+export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const { query, latitude, longitude, radiusKm, limit } = req.body as SemanticSearchBody;
+
+  if (
+    !query ||
+    typeof query !== "string" ||
+    typeof latitude !== "number" ||
+    typeof longitude !== "number"
+  ) {
+    return res.status(400).json({
+      message: "query, latitude and longitude are required",
+    });
+  }
+
+  const searchRadiusKm = Number(radiusKm || 10); // Slightly larger radius for discovering restaurants
+  const resultLimit = clampLimit(limit);
+
+  // 1. NLP Query Parsing (Optional)
+  let parsedCleanQuery = query;
+  try {
+    const nlpRes = await requestNlpParse(query);
+    parsedCleanQuery = nlpRes.cleanQuery || query;
+  } catch (error) {
+    console.error("NLP query parsing failed in restaurant search:", error);
+  }
+
+  // 2. Generate vector from user query
+  let queryVector: number[] = [];
+  let isAiGatewayDown = false;
+  try {
+    queryVector = await requestEmbedding(parsedCleanQuery, "RETRIEVAL_QUERY");
+  } catch (error: any) {
+    console.warn("⚠️ AI Gateway embedding generation failed for restaurant search:", error.message);
+    isAiGatewayDown = true;
+  }
+
+  // 3. Find nearby verified & open restaurants via Geospatial Math
+  const nearbyRestaurants = await Restaurant.aggregate<any>([
+    {
+      $geoNear: {
+        near: {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        },
+        distanceField: "distance",
+        maxDistance: searchRadiusKm * 1000,
+        spherical: true,
+        query: {
+          isVerified: true,
+          isOpen: true,
+        },
+      },
+    },
+  ]);
+
+  if (nearbyRestaurants.length === 0) {
+    return res.json({
+      success: true,
+      count: 0,
+      results: [],
+    });
+  }
+
+  const nearbyRestaurantIds = nearbyRestaurants.map(r => 
+    mongoose.Types.ObjectId.isValid(r._id) ? new mongoose.Types.ObjectId(r._id) : r._id
+  );
+
+  const restaurantDistanceMap = new Map<string, number>();
+  nearbyRestaurants.forEach((res) => {
+    restaurantDistanceMap.set(res._id.toString(), res.distance / 1000);
+  });
+
+  // 4. Vector Search using the `restaurant_embedding_vector_index`
+  const pipeline: any[] = [
+    {
+      $vectorSearch: {
+        index: "restaurant_embedding_vector_index",
+        path: "embedding",
+        queryVector,
+        numCandidates: Math.max(resultLimit * 20, 100),
+        limit: Math.max(resultLimit * 5, 25),
+        filter: {
+          _id: { $in: nearbyRestaurantIds },
+        },
+      },
+    },
+    {
+      $addFields: {
+        vectorScore: { $meta: "vectorSearchScore" },
+      },
+    },
+    { $limit: resultLimit },
+    {
+      $project: {
+        embedding: 0,
+        embeddingHash: 0,
+      },
+    },
+  ];
+
+  let items: any[] = [];
+  try {
+    if (isAiGatewayDown) {
+      throw new Error("AI Gateway is down. Falling back to JS text match.");
+    }
+    items = await Restaurant.aggregate(pipeline);
+    
+    if (items.length === 0) {
+      throw new Error("MongoDB $vectorSearch returned 0 results. Index might be missing. Proceeding to JS Fallback.");
+    }
+
+    // Blend AI Score with Distance Score
+    items = items.map(item => {
+      const distanceKm = restaurantDistanceMap.get(item._id.toString()) || 0;
+      const distanceScore = Math.max(0, 1 - distanceKm / searchRadiusKm);
+      const blendedScore = item.vectorScore * 0.7 + distanceScore * 0.3;
+      return {
+        ...item,
+        distanceKm,
+        distanceScore,
+        blendedScore
+      };
+    });
+    items.sort((a, b) => b.blendedScore - a.blendedScore);
+
+  } catch (error: any) {
+    console.warn("Fallback to JS text matching for Restaurant Search:", error.message);
+    
+    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+    
+    const candidateItems = nearbyRestaurants.map(item => {
+      let textMatchScore = 0;
+      const nameLower = (item.name || "").toLowerCase();
+      const descLower = (item.description || "").toLowerCase();
+      const tagsLower = (item.tags || []).map((t: string) => t.toLowerCase());
+      const cuisineLower = (item.cuisineTypes || []).map((t: string) => t.toLowerCase());
+      
+      let matches = 0;
+      queryWords.forEach(word => {
+        if (nameLower.includes(word)) matches += 2.0;
+        else if (descLower.includes(word)) matches += 1.0;
+        else if (cuisineLower.some((c: string) => c.includes(word))) matches += 1.5;
+        else if (tagsLower.some((t: string) => t.includes(word))) matches += 1.2;
+      });
+      textMatchScore = queryWords.length > 0 ? Math.min(1.0, matches / (queryWords.length * 2.0)) : 0;
+      
+      const distanceKm = restaurantDistanceMap.get(item._id.toString()) || 0;
+      const distanceScore = Math.max(0, 1 - distanceKm / searchRadiusKm);
+      const blendedScore = textMatchScore * 0.7 + distanceScore * 0.3;
+
+      return {
+        ...item,
+        vectorScore: textMatchScore,
+        distanceKm,
+        distanceScore,
+        blendedScore,
+        embedding: undefined,
+        embeddingHash: undefined
+      };
+    });
+
+    candidateItems.sort((a, b) => b.blendedScore - a.blendedScore);
+    items = candidateItems.slice(0, resultLimit);
+  }
+
+  return res.json({
+    success: true,
+    count: items.length,
+    results: items,
+    debug: {
+      isAiGatewayDown
+    }
+  });
+});
+
