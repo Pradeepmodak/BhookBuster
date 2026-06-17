@@ -270,6 +270,7 @@ export const rerankCandidates = async (
 
 export type QueryFilters = {
   maxPrice?: number;
+  minPrice?: number;
   dietaryFlags?: string[];
   isVeg?: boolean;
   cuisine?: string;
@@ -284,8 +285,10 @@ export type NlpSearchResponse = {
 const NLP_SYSTEM_PROMPT = `Analyze the user's food search query and extract structured filter parameters.
 Allowed spice levels are: "mild", "medium", "hot", "extra-hot".
 Identify if the user is asking for vegetarian food (isVeg).
-Extract a maximum price limit if mentioned (maxPrice) as a number.
+Extract a maximum price limit if mentioned (maxPrice) as a number (e.g., "under 200" or "below 300").
+Extract a minimum price limit if mentioned (minPrice) as a number (e.g., "above 200" or "greater than 150").
 Extract any cuisine requested (cuisine).
+Extract any dietary restriction/preference flags if mentioned (dietaryFlags) as a lowercase string array (e.g. "vegan", "gluten-free", "dairy-free", "nut-free", "halal", "kosher", etc.). Do not include "veg" in dietaryFlags since it's already captured by isVeg.
 Also return a "cleanQuery" which is the search terms without the price and vegetarian phrases.
 
 Return ONLY JSON in this format:
@@ -293,8 +296,10 @@ Return ONLY JSON in this format:
   "cleanQuery": "spicy chicken",
   "filters": {
     "maxPrice": 300,
+    "minPrice": 100,
     "isVeg": false,
-    "spiceLevel": "hot"
+    "spiceLevel": "hot",
+    "dietaryFlags": ["gluten-free"]
   }
 }`;
 

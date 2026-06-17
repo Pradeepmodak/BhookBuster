@@ -8,6 +8,7 @@ import { requestEmbedding, toStringArray, requestNlpParse } from "../lib/embeddi
 
 type SemanticSearchFilters = {
   maxPrice?: number;
+  minPrice?: number;
   dietaryFlags?: string[];
   isVeg?: boolean;
   cuisine?: string;
@@ -76,12 +77,22 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
 };
 
 const buildVectorFilter = (filters?: SemanticSearchFilters) => {
-  const vectorFilter: Record<string, unknown> = {
+  const vectorFilter: Record<string, any> = {
     isAvailable: true,
   };
 
+  const priceQuery: Record<string, number> = {};
+
   if (filters?.maxPrice != null) {
-    vectorFilter.price = { $lte: Number(filters.maxPrice) };
+    priceQuery.$lte = Number(filters.maxPrice);
+  }
+
+  if (filters?.minPrice != null) {
+    priceQuery.$gte = Number(filters.minPrice);
+  }
+
+  if (Object.keys(priceQuery).length > 0) {
+    vectorFilter.price = priceQuery;
   }
 
   const dietaryFlags = toStringArray(filters?.dietaryFlags);
@@ -95,7 +106,9 @@ const buildVectorFilter = (filters?: SemanticSearchFilters) => {
   }
 
   if (filters?.cuisine) {
-    vectorFilter.cuisine = filters.cuisine;
+    const cuisineLower = filters.cuisine.toLowerCase();
+    const cuisineTitle = filters.cuisine.charAt(0).toUpperCase() + filters.cuisine.slice(1).toLowerCase();
+    vectorFilter.cuisine = { $in: [cuisineLower, cuisineTitle, filters.cuisine] };
   }
 
   if (filters?.spiceLevel) {
@@ -235,7 +248,18 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       $in: nearbyRestaurantIds,
     },
   };
-
+    // ============================================================
+  // 🔍 DEBUG: SEMANTIC SEARCH LOGS
+  // ============================================================
+  // console.log("\n=============================================================");
+  // console.log("📥 [SEMANTIC SEARCH REQUEST]");
+  // console.log("👉 Original User Query :", query);
+  // console.log("👉 Cleaned Query Words :", parsedCleanQuery);
+  // console.log("👉 Parsed NLP Filters  :", JSON.stringify(parsedFilters, null, 2));
+  // console.log("👉 Final Merged Filters:", JSON.stringify(mergedFilters, null, 2));
+  // console.log("👉 Vector MongoDB Filter:", JSON.stringify(vectorFilter, null, 2));
+  // console.log("=============================================================\n");
+  // ============================================================
   const pipeline: any[] = [
     {
       $vectorSearch: {
@@ -424,8 +448,15 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       restaurantId: { $in: nearbyRestaurantIds },
     };
 
+    const priceQuery: Record<string, number> = {};
     if (mergedFilters?.maxPrice != null) {
-      jsFilter.price = { $lte: Number(mergedFilters.maxPrice) };
+      priceQuery.$lte = Number(mergedFilters.maxPrice);
+    }
+    if (mergedFilters?.minPrice != null) {
+      priceQuery.$gte = Number(mergedFilters.minPrice);
+    }
+    if (Object.keys(priceQuery).length > 0) {
+      jsFilter.price = priceQuery;
     }
 
     const dietaryFlags = toStringArray(mergedFilters?.dietaryFlags);
@@ -438,7 +469,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
     }
 
     if (mergedFilters?.cuisine) {
-      jsFilter.cuisine = mergedFilters.cuisine;
+      jsFilter.cuisine = { $regex: new RegExp(`^${mergedFilters.cuisine}$`, "i") };
     }
 
     if (mergedFilters?.spiceLevel) {
