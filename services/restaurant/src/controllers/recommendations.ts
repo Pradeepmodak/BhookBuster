@@ -1,9 +1,19 @@
+// Mongoose models for querying the MongoDB database
 import MenuItems from "../models/MenuItems.js";
 import Restaurant from "../models/Restaurant.js";
 import UserTasteProfile from "../models/UserTasteProfile.js";
+
+// Custom type for Express requests that have successfully passed the authentication middleware
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
+
+// Utility wrapper to automatically catch asynchronous errors and prevent the server from crashing
 import TryCatch from "../middlewares/trycatch.js";
 
+/**
+ * Utility to safely parse and clamp the "limit" pagination parameter.
+ * Ensures the limit is a positive number and caps it at 40 to prevent 
+ * users from overwhelming the database by requesting thousands of items at once.
+ */
 const clampLimit = (value: unknown) => {
   const parsed = Number(value || 12);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -13,6 +23,10 @@ const clampLimit = (value: unknown) => {
   return Math.min(parsed, 40);
 };
 
+/**
+ * Safely extracts and validates geolocation coordinates from the HTTP request query.
+ * Fails gracefully by returning null if the coordinates are missing or invalid.
+ */
 const parseLocation = (req: AuthenticatedRequest) => {
   const latitude = Number(req.query.latitude);
   const longitude = Number(req.query.longitude);
@@ -34,6 +48,11 @@ const parseLocation = (req: AuthenticatedRequest) => {
   };
 };
 
+/**
+ * Uses MongoDB Geospatial Queries ($geoNear) to find verified restaurants near the user's location.
+ * INTERVIEW NOTE: MongoDB's $geoNear is highly optimized for 2D sphere calculations.
+ * It automatically calculates the physical distance in meters and sorts the closest restaurants first.
+ */
 const getPopularNearbyRestaurants = async (
   latitude: number,
   longitude: number,
@@ -71,6 +90,15 @@ const getPopularNearbyRestaurants = async (
     { $limit: limit },
   ]);
 
+/**
+ * Constructs the complex MongoDB aggregation pipeline for the "For You" personalized feed.
+ * INTERVIEW NOTE (Hybrid Search Architecture): This is an advanced AI search pipeline that combines:
+ * 1. Semantic Search ($vectorSearch): Finds food mathematically similar to the user's AI taste profile.
+ * 2. Hard Filters: Only includes food from nearby, open restaurants ($match).
+ * 3. Geospatial Math (Haversine formula): Manually calculates distance using raw math (acos/sin/cos).
+ * 4. Composite Scoring: Blends the AI vector score (75% weight) and physical distance score (25% weight)
+ *    into a single `recommendationScore` to rank the final feed.
+ */
 const buildForYouPipeline = ({
   embeddingCentroid,
   restaurantIds,
@@ -215,6 +243,12 @@ const buildForYouPipeline = ({
   ];
 };
 
+/**
+ * Mathematical fallback function to calculate how similar two vectors are.
+ * INTERVIEW NOTE: If MongoDB Vector Search fails, we fetch the data into memory 
+ * and manually calculate the Cosine Similarity between the user's taste profile 
+ * and the menu items. A score of 1 means identical, 0 means completely unrelated.
+ */
 const cosineSimilarity = (a: number[], b: number[]): number => {
   if (!a || !b || a.length !== b.length || a.length === 0) return 0;
   let dot = 0;
@@ -229,6 +263,11 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
+/**
+ * Main controller for the app's Homepage. It serves two customized feeds:
+ * 1. "Popular Nearby": A geospatial list of nearby open restaurants.
+ * 2. "For You": A highly personalized feed of specific dishes tailored to the user's AI taste profile.
+ */
 export const homeRecommendations = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     if (!req.user) {

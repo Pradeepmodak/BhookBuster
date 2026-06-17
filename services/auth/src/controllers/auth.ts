@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import User from "../model/User.js";
-import jwt from 'jsonwebtoken';
-import TryCatch from "../middlewares/trycatch.js";
-import { oauth2Client } from "../config/googleConfig.js";
-import axios from "axios";
+import jwt from 'jsonwebtoken'; // for signing tokens
+import TryCatch from "../middlewares/trycatch.js"; // middleware for error handling
+import { oauth2Client } from "../config/googleConfig.js"; // import google oauth client already configured
+import axios from "axios"; // import axios for making http requests
 
 export const loginUser = TryCatch(async (req: Request, res: Response) => {
-    const { code } = req.body;
+    const { code } = req.body;  // temp code from frontend to login, later we will use cookies and refresh tokens
     if (!code) {
         return res.status(400).json({
             message: "Authorization code is required",
@@ -54,8 +54,5 @@ export const myProfile = TryCatch(async (req: Request, res: Response) => {
     if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
     }
-    // Do NOT re-sign a token here. Other services (restaurant, rider) may embed
-    // extra fields (e.g. restaurantId) into the JWT. Re-signing from just req.user
-    // would strip those fields and cause infinite reload loops.
     res.status(200).json({ user });
 });

@@ -42,6 +42,8 @@ export const AppProvider=({children}:AppContextProviderProps)=>{
     const [subtotal,setSubtotal]=useState(0);
     const [quantity,setQuantity]=useState(0);
 
+
+    // get user current location and city 
     const fetchLocation = async () => {
       if (!navigator.geolocation) {
         alert("Geolocation is not supported by this browser");

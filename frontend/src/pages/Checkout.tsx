@@ -1,13 +1,26 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { restaurantService, utilsService } from "../config";
-import type { ICart, IMenuItem, IRestaurant } from "../types";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { BiCreditCard, BiLoader } from "react-icons/bi";
-import { loadStripe } from "@stripe/stripe-js";
-import { useAppData } from "../context/AppContext";
+/**
+ * SUMMARY FOR INTERVIEW:
+ * ----------------------
+ * This component represents the Checkout Page.
+ * It is responsible for:
+ * 1. Address Management: Fetches and displays a list of the customer's saved delivery addresses.
+ * 2. Order Creation: Registers a pending order in the backend database.
+ * 3. Payment Gateway Integrations:
+ *    - Razorpay: Implements a Client-Side Modal checkout flow (calls backend to create Razorpay order -> opens Razorpay SDK popup -> verifies signature on backend).
+ *    - Stripe: Implements a Redirect-based checkout flow (requests a Stripe hosted checkout URL from backend -> redirects user -> handles webhook processing asynchronously on backend).
+ */
 
+import { useEffect, useState } from "react"; // React hooks for component state and lifecycle side-effects
+import axios from "axios"; // Promise-based HTTP client for API request management
+import { restaurantService, utilsService } from "../config"; // Backend microservice base URL configurations
+import type { ICart, IMenuItem, IRestaurant } from "../types"; // Strict TypeScript type declarations for consistent data structures
+import { useNavigate } from "react-router-dom"; // Hook for programmatically managing routes and navigating users
+import toast from "react-hot-toast"; // Library to display elegant, non-blocking notification popups
+import { BiCreditCard, BiLoader } from "react-icons/bi"; // High-quality vector icons from the BoxIcons library
+import { loadStripe } from "@stripe/stripe-js"; // Standard loader to dynamically load the Stripe.js script securely
+import { useAppData } from "../context/AppContext"; // Custom context hook to access global shopping cart data and totals
+
+// Load the Stripe SDK globally using the publishable API key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface Address {
@@ -16,8 +29,16 @@ interface Address {
   mobile: number;
 }
 
+// FUNCTION EXPLANATION FOR INTERVIEW:
+// Simple utility function to format numbers into localized Currency strings (e.g., "Rs 250").
 const formatCurrency = (value: number) => `Rs ${value}`;
 
+/**
+ * COMPONENT EXPLANATION FOR INTERVIEW:
+ * ------------------------------------
+ * The main Checkout page component. It integrates cart state, 
+ * delivery addresses, order summary display, and triggers payment workflows.
+ */
 const Checkout = () => {
   const { cart, subtotal, quantity } = useAppData();
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -29,6 +50,8 @@ const Checkout = () => {
 
   const navigate = useNavigate();
 
+  // INTERVIEW TALKING POINT: Fetch Addresses hook.
+  // Triggers only when the cart contains items, fetching all registered customer addresses.
   useEffect(() => {
     const fetchAddresses = async () => {
       if (!cart || cart.length === 0) {
@@ -61,11 +84,18 @@ const Checkout = () => {
     );
   }
 
+  // Calculate pricing summary details
   const restaurant = cart[0].restaurantId as IRestaurant;
-  const deliveryFee = subtotal < 250 ? 49 : 0;
+  const deliveryFee = subtotal < 250 ? 49 : 0; // Free delivery threshold is Rs 250
   const platformFee = 7;
   const grandTotal = subtotal + deliveryFee + platformFee;
 
+  /**
+   * FUNCTION EXPLANATION FOR INTERVIEW:
+   * -----------------------------------
+   * Shared helper function to instantiate a new Order in our database before payment.
+   * It creates a "pending" or "unpaid" order record which is later updated upon successful payment.
+   */
   const createOrder = async (paymentMethod: "razorpay" | "stripe") => {
     setCreatingOrder(true);
     try {
@@ -90,19 +120,32 @@ const Checkout = () => {
     }
   };
 
+  /**
+   * FUNCTION EXPLANATION FOR INTERVIEW: Razorpay SDK checkout flow.
+   * -------------------------------------------------------------
+   * 1. Creates an order in our database.
+   * 2. Requests `utilsService` to register the transaction with Razorpay API (generates a `razorpayOrderId`).
+   * 3. Configures options and opens the interactive Razorpay overlay.
+   * 4. Once user pays, the checkout modal returns client-side response parameters.
+   * 5. Forwards signature parameter to our backend `/api/payment/verify` for cryptographic verification (prevents fraud).
+   */
   const payWithRazorpay = async () => {
     try {
       setLoadingRazorpay(true);
 
+      // Verify that the Razorpay CDN script loaded successfully
       if (!(window as Window & { Razorpay?: unknown }).Razorpay) {
         toast.error("Payment system not ready. Please refresh.");
         return;
       }
 
+      // Step 1: Create local order
       const order = await createOrder("razorpay");
       if (!order) return;
 
       const { orderId, amount } = order;
+
+      // Step 2: Fetch Razorpay details
       const { data } = await axios.post(`${utilsService}/api/payment/create`, { orderId }, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -110,9 +153,10 @@ const Checkout = () => {
       });
       const { razorpayOrderId, key } = data;
 
+      // Step 3: Configure client-side Razorpay SDK options
       const options = {
         key,
-        amount: amount * 100,
+        amount: amount * 100, // Razorpay processes amounts in paisa (sub-units), hence multiplied by 100
         currency: "INR",
         name: "BhookBuster",
         description: "Food Order Payment",
@@ -122,6 +166,7 @@ const Checkout = () => {
           razorpay_payment_id: string;
           razorpay_signature: string;
         }) => {
+          // Step 4 & 5: Handle callback and verify signature on backend
           try {
             await axios.post(`${utilsService}/api/payment/verify`, {
               razorpay_order_id: response.razorpay_order_id,
@@ -141,7 +186,7 @@ const Checkout = () => {
           }
         },
         theme: {
-          color: "#facc15",
+          color: "#facc15", // Theme accent color matching app design
         },
       };
 
@@ -157,19 +202,33 @@ const Checkout = () => {
     }
   };
 
+  /**
+   * FUNCTION EXPLANATION FOR INTERVIEW: Stripe checkout redirect.
+   * -------------------------------------------------------------
+   * 1. Creates an order in our database.
+   * 2. Requests `utilsService` to generate a Stripe Checkout Session URL.
+   * 3. Redirects the browser window to Stripe's highly-secure, hosted payment portal.
+   * 4. Stripe redirects the user back to `/paymentsuccess` or checkout based on outcome.
+   */
   const payWithStripe = async () => {
     try {
       setLoadingStripe(true);
+
+      // Step 1: Create local order
       const order = await createOrder("stripe");
       if (!order) return;
 
       const { orderId } = order;
       await stripePromise;
+
+      // Step 2: Request Stripe Hosted Checkout URL
       const { data } = await axios.post(`${utilsService}/api/payment/stripe/create`, { orderId }, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
+
+      // Step 3: Redirect user
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -188,7 +247,7 @@ const Checkout = () => {
         <div className="space-y-6">
           <div className="rounded-[30px] border border-white/10 bg-[#121212] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
             <h1 className="text-3xl font-semibold">Checkout</h1>
-            <p className="mt-3 text-sm text-neutral-400">{restaurant.name} â€¢ {restaurant.autoLocation.formattedAddress}</p>
+            <p className="mt-3 text-sm text-neutral-400">{restaurant.name} • {restaurant.autoLocation.formattedAddress}</p>
           </div>
 
           <div className="rounded-[30px] border border-white/10 bg-[#171717] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
