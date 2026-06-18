@@ -1,575 +1,600 @@
-# BhookBuster: Production-Ready Microservices Architecture & AI Engine
+<p align="center">
+  <img src="https://img.shields.io/badge/BhookBuster-PRIME-facc15?style=for-the-badge&labelColor=0f0f0f&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZhY2MxNSI+PHBhdGggZD0iTTEyIDJMMyA3djEwbDkgNSA5LTVWN2wtOS01eiIvPjwvc3ZnPg==" alt="BhookBuster" />
+</p>
 
-BhookBuster is an enterprise-grade, full-stack food delivery platform engineered using a highly decoupled microservices architecture. Designed for performance, reliability, and scale, the system incorporates an AI Gateway for semantic food catalog searches, dynamic user taste profile generation, Redis cache-aside reads, RabbitMQ asynchronous queueing, and WebSocket-driven realtime synchronization.
+<h1 align="center">🍔 BhookBuster</h1>
 
----
+<p align="center">
+  <strong>AI-Powered Food Delivery Platform • Microservices Architecture • Real-Time Tracking</strong>
+</p>
 
-## 1. Project Overview & Role-Based Workflows
+<p align="center">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/MongoDB_Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/RabbitMQ-FF6600?style=flat-square&logo=rabbitmq&logoColor=white" />
+  <img src="https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socket.io&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Gemini_AI-8E75B2?style=flat-square&logo=google&logoColor=white" />
+  <img src="https://img.shields.io/badge/Razorpay-0C2451?style=flat-square&logo=razorpay&logoColor=white" />
+  <img src="https://img.shields.io/badge/Stripe-635BFF?style=flat-square&logo=stripe&logoColor=white" />
+</p>
 
-BhookBuster coordinates transactions, logistics, and intelligence across four primary roles: **Customers**, **Riders**, **Restaurant Owners (Sellers)**, and **Admins**.
-
-### End-to-End User Flow
-```
-[Customer]             [Utils Service]         [Restaurant Service]       [Rider Service]        [Realtime Service]
-    │                         │                         │                         │                      │
-    ├─► Place Order ──────────┼────────────────────────►│                         │                      │
-    │   (Status: placed)      │                         │                         │                      │
-    ├─► Initiate Payment ────►│                         │                         │                      │
-    │                         ├─► Verify Payment        │                         │                      │
-    │                         │   & Publish Msg ───────►│ (paymentStatus: paid)   │                      │
-    │                         │   (RabbitMQ)            ├─► Emit "order:new" ────┼─────────────────────►│
-    │                         │                         │   (Internal HTTP Gateway)                      │ (Socket.io Emit)
-    │                         │                         │                                                ├─► Notify Restaurant
-    │                         │                         ├─► Prepare Order ────────┼─────────────────────►│
-    │                         │                         │   (Status: preparing)                          │
-    │                         │                         ├─► Status: ready_for_rider                      │
-    │                         │                         │   & Publish Dispatch ──►│ (Rider Geofencing)   │
-    │                         │                         │   (RabbitMQ)            ├─► Match nearby       │
-    │                         │                         │                         │   Riders & Emit      │
-    │                         │                         │                         │   "order:available" ─┼──► Notify Rider
-    │                         │                         │                         │                      │
-    │   Accept Dispatch ◄─────┼─────────────────────────┼─────────────────────────┼──────────────────────┤
-    │                         │                         │                         │                      │
-    │   Stream GPS Lat/Lng ◄──┼─────────────────────────┼─────────────────────────┼──────────────────────┤ (WebSockets)
-    │                         │                         │                         │                      │
-    │   Deliver Order ◄───────┼─────────────────────────┼─────────────────────────┼──────────────────────┤
-    │   (Status: delivered)   │                         │                         │                      │
-```
-
-1. **Browsing & Ordering:** A Customer uses geolocation and AI-driven semantic search (e.g., *"high-protein keto salad under ₹300"*) to discover menu items, adds items to their cart, selects a verified delivery address, and creates a pending order.
-2. **Checkout & Payment Verification:** The order is initialized with a MongoDB Time-To-Live (TTL) index of 15 minutes. The Customer pays using Razorpay or Stripe. Upon successful provider webhook verification, the `utils` service publishes a `PAYMENT_SUCCESS` event to RabbitMQ.
-3. **Fulfillment & Dispatch:** The `restaurant` service consumes the payment event, updates the order status to `placed` (unsetting the MongoDB TTL index to prevent order expiration), deletes the customer's cart, and triggers a Socket.IO notification to the restaurant. The restaurant owner marks the order as `preparing`, then `ready_for_rider`.
-4. **Decoupled Rider Dispatch:** Setting the status to `ready_for_rider` publishes an `ORDER_READY_FOR_RIDER` message to RabbitMQ. The `rider` service consumes this, queries nearby online, verified riders (using a 2dsphere geofencing query with a 5km radius), and notifies them via WebSockets.
-5. **Realtime Delivery & Tracking:** A rider accepts the order, marking the status as `rider_assigned`. While moving, the rider's frontend streams high-accuracy GPS coordinates via native `navigator.geolocation.watchPosition` to a Socket.IO room. The customer tracks the rider live on a Leaflet map. Finally, the rider delivers the order, triggering settlement calculations and updating platform dashboards in realtime.
+<p align="center">
+  <em>An enterprise-grade, full-stack food delivery ecosystem built with 7 microservices, AI-driven semantic search, real-time GPS tracking, and hyper-personalized recommendations.</em>
+</p>
 
 ---
 
-## 2. Complete Architecture Diagram
+## ⚡ Why BhookBuster?
 
-The system decouples core domains into 7 distinct services. Internal services communicate via direct HTTP REST, RabbitMQ asynchronous message queues, or local memory-efficient APIs. Socket.IO acts as the public push gateway.
+BhookBuster isn't a CRUD app with a food theme — it's a **production-grade distributed system** that solves real problems at scale:
 
-```
-                  ┌────────────────────────────────────────────────────────┐
-                  │                 REACT + VITE FRONTEND                  │
-                  └──────┬──────────────┬──────────────┬─────────────┬─────┘
-                         │              │              │             │
-                    HTTP │         HTTP │         HTTP │   Websocket │
-                         ▼              ▼              ▼             ▼
-  ┌──────────────────────┴┐     ┌───────┴──────────────┐      ┌──────┴──────────────┐
-  │     auth-service      │     │  restaurant-service  │◄────►│  realtime-service   │
-  │        [5000]         │     │        [3000]        │      │       [4000]        │
-  └──────────┬────────────┘     └───────┬──────┬───────┘      └──────────▲──────────┘
-             │                          │      │                         │
-        REST │                     REST │      │ Vector Search           │ Internal Emit
-             ▼                          ▼      ▼                         │ HTTP (HMAC)
-  ┌──────────┴────────────┐     ┌───────┴──────┴───────┐                 │
-  │     utils-service     │◄───►│      ai-gateway      │─────────────────┘
-  │        [7000]         │     │        [5010]        │
-  └──────────┬────────────┘     └──────────────────────┘
-             │                          ▲
-             │ AMQP (payment_success)   │ AMQP (user_event_queue)
-             ▼                          ▼
-  ┌─────────────────────────────────────────────────────────────────────────┐
-  │                             RABBITMQ BROKER                             │
-  └──────────────────────────────────┬──────────────────────────────────────┘
-                                     │
-                                     │ AMQP (order_ready_queue)
-                                     ▼
-                        ┌────────────────────────────┐
-                        │       rider-service        │
-                        │           [5001]           │
-                        └────────────┬───────────────┘
-                                     │
-                        ┌────────────▼───────────────┐
-                        │         DATABASES          │
-                        │  MongoDB Atlas | Redis     │
-                        └────────────────────────────┘
-```
+| Problem | BhookBuster's Solution |
+|:---|:---|
+| 🔍 Users type vague searches like *"something spicy under 300"* | **AI NLP Parser** extracts structured filters + **Vector Search** finds semantically matching dishes |
+| 📡 Customers want to see their rider live | **WebSocket GPS pipeline** streams `watchPosition` coordinates through a dedicated realtime gateway |
+| 💳 Unpaid orders clog the database | **MongoDB TTL indexes** auto-delete abandoned checkouts after 15 min — no cron jobs needed |
+| 🚴 Finding the right rider is slow | **Geofenced dispatch** via `2dsphere` queries + RabbitMQ async matching within 5km radius |
+| 🍽️ Generic recommendations bore users | **Rolling taste profile centroids** (80/20 exponential decay) adapt to every order and click |
+| 🔌 Restarting APIs drops WebSocket users | **Decoupled realtime gateway** — REST services can restart without breaking live connections |
 
 ---
 
-## 3. All 7 Microservices Deep Dive
-
-### 1. `services/auth` (User Authentication & RBAC)
-*   **Responsibility:** Handles Google OAuth, JWT authentication, user onboarding, role assignments, and profile operations.
-*   **Endpoints:**
-    *   `POST /api/auth/login` (Exchanges authorization code for a JWT; rate-limited).
-    *   `PUT /api/auth/add/role` (Saves onboarding role: `customer`, `rider`, or `seller`).
-    *   `GET /api/auth/me` (Retrieves authenticated profile).
-*   **Database Collections Owned:** `users` (MongoDB).
-*   **RabbitMQ Connections:** None.
-*   **Redis Keys:** None.
-
-### 2. `services/restaurant` (Core Catalog & Order Lifecycle)
-*   **Responsibility:** Owns restaurant configurations, menu catalog vectors, order workflows, and seller statistics.
-*   **Endpoints:**
-    *   `POST /api/restaurant/new` (Registers restaurant, generates geometric locations).
-    *   `POST /api/menuitem/new` (Adds menu items and triggers vector embedding generation).
-    *   `POST /api/order/new` (Creates a pending order, computes Haversine distances).
-    *   `GET /api/order/payment/:id` (Internal checkout helper).
-    *   `PUT /api/order/:orderId` (Status updating by sellers: `accepted`, `preparing`, `ready_for_rider`).
-    *   `PUT /api/order/assign/rider` (Internal assignment endpoint).
-*   **Database Collections Owned:** `restaurants`, `menuitems`, `orders`, `carts`, `addresses`, `userfoodevents`, `usertasteprofiles`.
-*   **RabbitMQ Connections:**
-    *   Consumes: `payment_event` queue.
-    *   Publishes: `order_ready_queue` and `user_event_queue` exchanges.
-*   **Redis Keys:** `restaurant:dashboard:${restaurantId}` (TTL: 5m).
-
-### 3. `services/rider` (Logistics, Availability & Dispatch)
-*   **Responsibility:** Rider profiles, live availability toggles, nearby dispatch match loops, and delivery coordination.
-*   **Endpoints:**
-    *   `POST /api/rider/new` (Creates rider profile with driving license/Aadhar data).
-    *   `PATCH /api/rider/toggle` (Toggles rider's online state and updates GPS coordinates).
-    *   `GET /api/rider/order/queue` (Fetches dispatch requests matching rider's radius).
-    *   `POST /api/rider/accept/:orderId` (Accepts dispatch, locks order).
-    *   `PUT /api/rider/order/update/:orderId` (Updates state: `picked_up` -> `delivered`).
-*   **Database Collections Owned:** `riders`, `users` (Read-only mirror).
-*   **RabbitMQ Connections:**
-    *   Consumes: `order_ready_queue` (triggers nearby geofenced notifications).
-*   **Redis Keys:** `rider:profile:${userId}` (TTL: 5m), `rider:assigned-order:${riderId}` (TTL: 5m), `rider:queue:${userId}` (TTL: 5m).
-
-### 4. `services/admin` (Governance & Platforms Monitoring)
-*   **Responsibility:** Governance dashboard, participant verification queues, and financial metrics aggregations.
-*   **Endpoints:**
-    *   `GET /api/admin/restaurant/pending` (Gets unverified restaurants).
-    *   `PATCH /api/verify/restaurant/:id` (Approves restaurant, invalidates catalogs).
-    *   `GET /api/admin/stats` (Computes gross platform revenue, subsidies, payouts, growth percentage).
-    *   `GET /api/admin/orders-trend` (Timezone-aware order aggregations).
-*   **Database Collections Owned:** None (Aggregates across `orders`, `users`, `restaurants`, `riders`).
-*   **RabbitMQ Connections:** None.
-*   **Redis Keys:** `admin:stats` (TTL: 1m), `admin:top-items` (TTL: 5m), `admin:orders-trend` (TTL: 5m).
-
-### 5. `services/realtime` (WebSocket Gateway)
-*   **Responsibility:** Decoupled Socket.io gateway mapping internal HTTP requests to public websocket rooms.
-*   **Endpoints:**
-    *   `POST /api/v1/internal/emit` (Authenticated via HMAC internal key, emits messages to specified rooms).
-*   **Database Connections:** None.
-*   **RabbitMQ Connections:** None.
-*   **Redis Keys:** None.
-
-### 6. `services/utils` (Payment Gateways & Media Uploads)
-*   **Responsibility:** Razorpay/Stripe checkout orchestration, signature verifications, and Cloudinary media uploads.
-*   **Endpoints:**
-    *   `POST /api/payment/create` (Creates Razorpay order receipt).
-    *   `POST /api/payment/verify` (Verifies signature and publishes payment success).
-    *   `POST /api/payment/stripe/create` (Initializes Stripe Checkout Session).
-    *   `POST /api/upload` (Secured Cloudinary image uploads).
-*   **Database Connections:** None.
-*   **RabbitMQ Connections:**
-    *   Publishes: `payment_event` queue.
-*   **Redis Keys:** None.
-
-### 7. `services/ai-gateway` (LLM & Embeddings Router)
-*   **Responsibility:** High-speed tokenization, embeddings generation, queries parsing, and business analytical insights.
-*   **Endpoints:**
-    *   `POST /internal/embed` (Generates text embeddings via Gemini API).
-    *   `POST /internal/nlp/parse` (Parses search queries into filters via Groq/Gemini).
-    *   `POST /internal/insights` (Generates analytical summaries).
-*   **Database Connections:** None.
-*   **RabbitMQ Connections:** None.
-*   **Redis Keys:** None.
-
----
-
-## 4. RabbitMQ Event Workflows
-
-BhookBuster utilizes RabbitMQ to decouple transactional API execution paths from background processing.
+## 🏗️ Architecture Overview
 
 ```
-   [Utils Service] ───────────────► (payment_event) ──────────────► [Restaurant Service]
-                                                                        │
-                                                                        ├─► Clear Cart
-                                                                        ├─► Generate UserFoodEvent
-                                                                        └─► Publish User Event
-                                                                                │
-   [Rider Service] ◄────────────── (order_ready_queue) ◄────────────────────────┴─► Update Taste Profile
-```
+                    ┌──────────────────────────────────────────────────────────┐
+                    │              ⚛️  REACT 19 + VITE + TAILWIND              │
+                    │      (SPA: 16 Pages • Framer Motion • Leaflet Maps)     │
+                    └──────┬──────────────┬──────────────┬─────────────┬──────┘
+                           │              │              │             │
+                      HTTP │         HTTP │         HTTP │   WebSocket │
+                           ▼              ▼              ▼             ▼
+    ┌──────────────────────┴┐     ┌───────┴──────────────┐      ┌─────┴───────────────┐
+    │   🔐 auth-service     │     │  🍕 restaurant-service│◄────►│  📡 realtime-service │
+    │       [:5000]         │     │       [:3000]         │      │       [:4000]        │
+    │  Google OAuth + JWT   │     │  Catalog • Orders     │      │  Socket.IO Gateway   │
+    └──────────┬────────────┘     │  Search • Cart        │      └──────────▲───────────┘
+               │                  └───────┬──────┬────────┘                 │
+          REST │                     REST │      │ Vector Search    Internal Emit
+               ▼                          ▼      ▼                  HTTP (HMAC)
+    ┌──────────┴────────────┐     ┌───────┴──────┴────────┐                 │
+    │   💰 utils-service    │◄───►│   🤖 ai-gateway       │─────────────────┘
+    │       [:7000]         │     │       [:5010]          │
+    │  Razorpay • Stripe    │     │  Gemini Embeddings     │
+    │  Cloudinary Uploads   │     │  Groq NLP • Insights   │
+    └──────────┬────────────┘     └────────────────────────┘
+               │                          ▲
+               │ AMQP                     │ AMQP (user events)
+               ▼                          ▼
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │                          🐰 RABBITMQ BROKER                             │
+    │   Queues: payment_event • order_ready_queue • user_event_queue          │
+    └──────────────────────────────┬───────────────────────────────────────────┘
+                                   │ AMQP (dispatch)
+                                   ▼
+                      ┌────────────────────────────┐
+                      │   🚴 rider-service          │
+                      │       [:5001]               │
+                      │  Geofencing • Dispatch      │
+                      │  GPS Tracking • Earnings    │
+                      └────────────┬────────────────┘
+                                   │
+                      ┌────────────▼────────────────┐
+                      │        🗄️ DATA LAYER         │
+                      │   MongoDB Atlas (Vector)    │
+                      │   Redis (Cache-Aside)       │
+                      └─────────────────────────────┘
 
-### 1. `payment_event` Queue
-*   **Trigger:** Triggered when the payment provider verifies the customer's transaction.
-*   **Producer:** `services/utils` (payment service).
-*   **Consumer:** `services/restaurant` (restaurant service).
-*   **Payload Schema:**
-```json
-{
-  "type": "PAYMENT_SUCCESS",
-  "data": {
-    "orderId": "65cb783f0cfc4b7890a2a1a2",
-    "paymentId": "pay_O1a2b3c4d5e6f7",
-    "provider": "razorpay"
-  }
-}
-```
-
-### 2. `order_ready_queue` Queue
-*   **Trigger:** Triggered when a restaurant marks an order status as `ready_for_rider`.
-*   **Producer:** `services/restaurant` (restaurant service).
-*   **Consumer:** `services/rider` (rider service).
-*   **Payload Schema:**
-```json
-{
-  "type": "ORDER_READY_FOR_RIDER",
-  "data": {
-    "orderId": "65cb783f0cfc4b7890a2a1a2",
-    "restaurantId": "65cb781a0cfc4b7890a2a101",
-    "location": {
-      "type": "Point",
-      "coordinates": [77.5946, 12.9716]
-    }
-  }
-}
-```
-
-### 3. `user_event_queue` Queue
-*   **Trigger:** Triggered when a customer makes an order, clicks/likes an item, searches, or leaves ratings.
-*   **Producer:** `services/restaurant` (restaurant service).
-*   **Consumer:** `services/restaurant` (recommendations consumer).
-*   **Payload Schema:**
-```json
-{
-  "userId": "65cb77df0cfc4b7890a2a001",
-  "eventType": "orderPaid",
-  "restaurantId": "65cb781a0cfc4b7890a2a101",
-  "metadata": {
-    "orderId": "65cb783f0cfc4b7890a2a1a2"
-  }
-}
+              ┌──────────────────────────────────────┐
+              │  🛡️ admin-service [:6000]             │
+              │  Verification • Revenue Analytics    │
+              │  Platform Governance                 │
+              └──────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Redis Caching Strategy
+## 🧠 AI Engine — The Intelligence Layer
 
-The cache-aside pattern is implemented to accelerate read-heavy routes. Services fail gracefully to direct database queries if Redis becomes unavailable.
+BhookBuster's AI isn't a bolted-on chatbot. It's deeply woven into the search, recommendations, and analytics pipelines.
 
-```ts
-// Example Cache-Aside implementation
-export const withCache = async <T>({ key, ttl, fetcher }: CacheOptions<T>) => {
-  const cached = await getCache<T>(key);
-  if (cached) {
-    return { data: cached, cached: true };
-  }
-  const fresh = await fetcher();
-  await setCache(key, fresh, ttl);
-  return { data: fresh, cached: false };
-};
+### 🔍 Semantic Search Pipeline
+
+When a user types *"cheesy garlic bread under 200 rupees"*, here's what happens in < 500ms:
+
+```
+   User Query                  AI Gateway                    MongoDB Atlas
+  ─────────────────────────────────────────────────────────────────────────
+                                    
+  "cheesy garlic       ──►  Groq llama-3.3-70b         ──►  $vectorSearch
+   bread under 200"         NLP Parse                       menu_embedding_vector_index
+                            ┌─────────────────┐             ┌──────────────────────┐
+                            │ cleanQuery:      │             │ filter:              │
+                            │  "cheesy garlic  │             │  isAvailable: true   │
+                            │   bread"         │             │  restaurantId: $in   │
+                            │ filters:         │             │   [nearby verified]  │
+                            │  maxPrice: 200   │             │                      │
+                            └────────┬────────┘             └──────────┬───────────┘
+                                     │                                 │
+                            Gemini embedding-2              $vectorSearch against
+                            1536-dim vector                 pre-indexed embeddings
+                                     │                                 │
+                                     └─────────────┬───────────────────┘
+                                                   ▼
+                                         Blended Ranking Score
+                                    ┌──────────────────────────────┐
+                                    │  0.6 × vectorScore           │
+                                    │  0.2 × popularityScore       │
+                                    │  0.2 × distanceScore         │
+                                    └──────────────────────────────┘
 ```
 
-| Key Pattern | TTL | Cached Data Description | Invalidation Event & Mechanism |
-| :--- | :--- | :--- | :--- |
-| `admin:stats` | 60s | Computed platform analytics KPIs | Invalidated on `markRestaurantVerified` or `markRiderVerified`. |
-| `admin:top-items` | 300s | Aggregate best-selling menu items | Time-based TTL expiration. |
-| `rider:profile:${userId}` | 300s | Rider details, verification status | Invalidated on `addRiderProfile`, `toggleRiderAvailability`, or `updateRiderProfile`. |
-| `rider:assigned-order:${riderId}`| 300s | Current active order details | Deleted on `acceptOrder`, `toggleRiderAvailability`, or status changes. |
-| `rider:queue:${userId}` | 300s | Nearby dispatch list | Reset to `[]` when the rider accepts an order. |
-| `restaurant:dashboard:${id}` | 300s | Sales summaries, active order queue | Invalidated on order creation, status changes, or assignment. |
+**Resilient Fallback:** If the AI Gateway or Atlas Vector Search is down, the system gracefully degrades to in-memory **cosine similarity** with **tokenized text matching** — search never breaks.
+
+### 🎯 Hyper-Personalized "For You" Recommendations
+
+Every user action trains their **taste profile centroid** — a rolling 1536-dimensional embedding vector:
+
+| Event | Weight | Learning Rate (α) | How It Updates |
+|:---|:---:|:---:|:---|
+| 🛒 Order Paid | Highest | 0.20 | `C_new = 0.8 × C_old + 0.2 × C_order` |
+| 🛍️ Add to Cart | 1.5× | 0.075 | Blends item embedding into centroid |
+| ⭐ Rating Given | 2.0× | 0.10 | Amplifies preference signal |
+| 🔍 Search Query | 0.2× | 0.01 | Light nudge toward searched cuisine |
+
+The home page's "For You" section runs a `$vectorSearch` using this centroid against nearby menu items, producing a **75% AI relevance + 25% distance** composite score.
+
+### 📊 AI-Powered Business Insights
+
+Admin and seller dashboards feed financial metrics to the AI Gateway, which generates natural-language anomaly detection and growth recommendations via Groq/Gemini. All currency outputs are enforced in **₹ (INR)** formatting.
 
 ---
 
-## 6. Socket.IO & Real-Time Logistics
+## 🔄 Event-Driven Order Lifecycle
 
-Live updates are routed through a dedicated `realtime` service. Decoupling WebSockets ensures REST scaling does not drop persistent user connections.
+The entire order flow is **fully asynchronous** — no service blocks another:
 
-### Handshake Authentication
-When initializing the connection, the client sends the authorization header. The Socket.IO server interceptor validates this token:
-```ts
-io.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Unauthorized"));
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY!) as any;
-    socket.data.user = decoded.user;
-    next();
-  } catch (err) {
-    next(new Error("Unauthorized"));
-  }
+```
+  ┌──────────┐    ┌──────────────┐    ┌────────────────────┐    ┌──────────────┐    ┌───────────────┐
+  │ CUSTOMER │    │ UTILS SERVICE│    │ RESTAURANT SERVICE │    │ RIDER SERVICE│    │   REALTIME    │
+  └────┬─────┘    └──────┬───────┘    └─────────┬──────────┘    └──────┬───────┘    └───────┬───────┘
+       │                 │                      │                      │                    │
+       │──Place Order───────────────────────────►                      │                    │
+       │  (TTL: 15min)   │                      │                      │                    │
+       │                 │                      │                      │                    │
+       │──Pay (Razorpay/Stripe)─►               │                      │                    │
+       │                 │──Verify Signature     │                      │                    │
+       │                 │──RabbitMQ: ═══════════►                      │                    │
+       │                 │  PAYMENT_SUCCESS      │──Unset TTL           │                    │
+       │                 │                      │──Clear Cart           │                    │
+       │                 │                      │──Socket.IO: ──────────────────────────────►│
+       │                 │                      │  "order:new"          │                    │──► Restaurant
+       │                 │                      │                      │                    │    Notified
+       │                 │                      │◄─Seller: preparing    │                    │
+       │                 │                      │◄─Seller: ready ───────►                    │
+       │                 │                      │  RabbitMQ: ═══════════►──5km Geofence      │
+       │                 │                      │  ORDER_READY          │──Query Riders      │
+       │                 │                      │                      │──Socket.IO: ───────►│──► Rider
+       │                 │                      │                      │                    │    Notified
+       │                 │                      │                      │◄─Accept             │
+       │                 │                      │                      │                    │
+       │◄──Live GPS Stream (watchPosition)──────────────────────────────────────────────────│
+       │   via Socket.IO rooms                  │                      │                    │
+       │                 │                      │                      │                    │
+       │◄──Status: delivered────────────────────────────────────────────                    │
+  ┌────▼─────┐                                                                              
+  │  ⭐ Rate  │──► RabbitMQ: user_event_queue ──► Update Taste Profile Centroid             
+  └──────────┘                                                                              
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|:---|:---|
+| **MongoDB TTL for unpaid orders** | Automatically garbage-collects abandoned checkouts — zero cron jobs, zero manual cleanup |
+| **RabbitMQ between payment → fulfillment** | Payment verification doesn't block order processing. Services are independently deployable |
+| **Dedicated realtime gateway** | REST services can restart without dropping live WebSocket connections |
+| **HMAC-signed internal HTTP** | Service-to-service communication is authenticated without exposing APIs publicly |
+
+---
+
+## 🗄️ Data Architecture
+
+### MongoDB Collections
+
+| Collection | Owner Service | Key Indexes | Purpose |
+|:---|:---|:---|:---|
+| `users` | auth | `email` (unique) | Google OAuth profiles, RBAC roles |
+| `restaurants` | restaurant | `autoLocation` (2dsphere), `isVerified` | Geo-indexed catalog with AI embeddings |
+| `menuitems` | restaurant | `restaurantId`, `dietaryFlags`, `isAvailable`, `embedding` (vector) | Searchable menu with 1536-dim vectors |
+| `orders` | restaurant | `userId`, `restaurantId`, `riderId`, `expiresAt` (TTL) | Full order lifecycle with auto-cleanup |
+| `carts` | restaurant | Compound unique `{userId, restaurantId, itemId}` | Prevents duplicate entries |
+| `addresses` | restaurant | `userId` | Verified delivery locations |
+| `riders` | rider | `location` (2dsphere), `isAvailable` | Geofenced rider dispatch pool |
+| `usertasteprofiles` | restaurant | `userId` (unique) | AI taste centroid + cuisine weights |
+| `userfoodevents` | restaurant | `userId`, `eventType` | Behavioral event stream for ML pipeline |
+
+### Redis Cache Strategy (Cache-Aside Pattern)
+
+```typescript
+// Every cached route follows this exact pattern — fail-safe to DB on Redis outage
+const { data, cached } = await withCache({
+  key: `restaurant:dashboard:${restaurantId}`,
+  ttl: 300, // 5 minutes
+  fetcher: () => aggregateDashboardData(restaurantId),
 });
 ```
 
-### Room Architecture & Socket Events
-1.  **Room Assignment on Connection:**
-    *   Every user joins `user:${userId}`.
-    *   Restaurant owners join `restaurant:${restaurantId}`.
-    *   Admins join `admin`.
-2.  **Order Tracking Namespace:**
-    *   Clients join `order:${orderId}` to track active delivery status changes.
-3.  **GPS Rider Tracking Pipeline:**
-    *   Rider's mobile device triggers GPS tracking inside RiderOrderMap.tsx:
-    ```ts
-    navigator.geolocation.watchPosition((pos) => {
-      socket.emit("rider:location", {
-        room: `user:${order.userId}`,
-        payload: { latitude: pos.coords.latitude, longitude: pos.coords.longitude },
-      });
-    }, err => {}, { enableHighAccuracy: true, maximumAge: 0 });
-    ```
-    *   The `realtime` gateway catches this event and broadcasts it:
-    ```ts
-    socket.on("rider:location", (data) => {
-      socket.to(data.room).emit("rider:location", data.payload);
-    });
-    ```
-4.  **Decoupled Realtime Emitter (Internal HTTP Gateway):**
-    Internal services send a signed HTTP POST request to `/api/v1/internal/emit` to push order status updates to clients:
-    ```ts
-    // In restaurant/rider service:
-    await axios.post(`${process.env.REALTIME_SERVICE}/api/v1/internal/emit`, {
-      event: "order:update",
-      room: `user:${order.userId}`,
-      payload: { orderId: order._id, status: "picked_up" }
-    }, { headers: { "x-internal-key": process.env.INTERNAL_SERVICE_KEY } });
-    ```
+| Key Pattern | TTL | Invalidation Trigger |
+|:---|:---:|:---|
+| `admin:stats` | 60s | Restaurant/rider verification |
+| `admin:top-items` | 5m | Time-based expiry |
+| `rider:profile:${userId}` | 5m | Profile update, availability toggle |
+| `rider:assigned-order:${riderId}` | 5m | Accept order, status change |
+| `rider:queue:${userId}` | 5m | Reset on order acceptance |
+| `restaurant:dashboard:${id}` | 5m | Order creation, status change |
 
 ---
 
-## 7. Database Schemas
+## 📡 Real-Time System (Socket.IO)
 
-### 1. `users` (Auth Service)
-*   `name`: `String` (Required)
-*   `email`: `String` (Required, Unique Index)
-*   `image`: `String` (Required)
-*   `role`: `String` (`customer` | `seller` | `rider` | `null`, default: `null`)
-*   `timestamps`: `true`
-
-### 2. `restaurants` (Restaurant Service)
-*   `name`: `String` (Required, Trimmed)
-*   `description`: `String`
-*   `image`: `String` (Required)
-*   `ownerId`: `String` (Required)
-*   `phone`: `Number` (Required)
-*   `isVerified`: `Boolean` (Required, Index)
-*   `cuisineTypes`: `[String]` (Default: `[]`)
-*   `tags`: `[String]` (Default: `[]`)
-*   `embedding`: `[Number]` (Default: `[]`, index size: 1536)
-*   `autoLocation`:
-    *   `type`: `String` (Enum: `["Point"]`, Required)
-    *   `coordinates`: `[Number]` (Required, `[longitude, latitude]`)
-    *   `formattedAddress`: `String`
-*   `isOpen`: `Boolean` (Default: `false`)
-*   `timestamps`: `true`
-*   *Indexes:* `autoLocation: "2dsphere"` (for geo spatial calculations).
-
-### 3. `menuitems` (Restaurant Service)
-*   `restaurantId`: `ObjectId` (Ref: `Restaurant`, Required, Index)
-*   `name`: `String` (Required)
-*   `description`: `String`
-*   `price`: `Number` (Required)
-*   `cuisine`: `String`
-*   `tags`: `[String]`
-*   `dietaryFlags`: `[String]` (Index)
-*   `spiceLevel`: `String` (Enum: `["mild", "medium", "hot", "extra-hot"]`)
-*   `embedding`: `[Number]` (Default: `[]`)
-*   `isAvailable`: `Boolean` (Default: `true`, Index)
-*   `timestamps`: `true`
-
-### 4. `carts` (Restaurant Service)
-*   `userId`: `ObjectId` (Ref: `User`, Required, Index)
-*   `restaurantId`: `ObjectId` (Ref: `Restaurant`, Required, Index)
-*   `itemId`: `ObjectId` (Ref: `MenuItem`, Required, Index)
-*   `quantity`: `Number` (Default: `1`, Min: `1`)
-*   *Indexes:* Compound Unique Index: `{ userId: 1, restaurantId: 1, itemId: 1 }` (prevents duplicate cart entries).
-
-### 5. `orders` (Restaurant Service)
-*   `userId`: `String` (Required, Index)
-*   `restaurantId`: `String` (Required, Index)
-*   `restaurantName`: `String` (Required)
-*   `riderId`: `String` (Default: `null`, Index)
-*   `riderName`: `String` (Default: `null`)
-*   `riderPhone`: `String` (Default: `null`)
-*   `riderAmount`: `Number` (Required)
-*   `distance`: `Number` (Required)
-*   `items`: Array of: `{ itemId: String, name: String, price: Number, quantity: Number }`
-*   `subtotal`: `Number`, `deliveryFee`: `Number`, `platformFee`: `Number`, `totalAmount`: `Number`
-*   `addressId`: `String` (Required)
-*   `deliveryAddress`: `{ formattedAddress: String, mobile: Number, latitude: Number, longitude: Number }`
-*   `status`: `String` (Enum: `["placed", "accepted", "preparing", "ready_for_rider", "rider_assigned", "picked_up", "delivered", "cancelled"]`)
-*   `paymentMethod`: `String` (Enum: `["razorpay", "stripe"]`)
-*   `paymentStatus`: `String` (Enum: `["pending", "paid", "failed"]`, default: `pending`)
-*   `expiresAt`: `Date` (Index: `{ expireAfterSeconds: 0 }` — Auto-cleans unpaid orders).
-
-### 6. `usertasteprofiles` (Restaurant Service)
-*   `userId`: `ObjectId` (Ref: `User`, Required, Unique Index)
-*   `cuisineWeights`: `Map` (Key: `String`, Value: `Number`)
-*   `priceBand`: `{ min: Number, max: Number }`
-*   `dietaryFlags`: `[String]`
-*   `embeddingCentroid`: `[Number]` (User interest vector)
-*   `timestamps`: `true`
-
----
-
-## 8. Authentication & Authorization
-
-BhookBuster implements stateless authorization using JWTs verified locally by each service.
-
-```
-   [Frontend]               [Auth Service]           [Google OAuth]            [Domain Service]
-       │                           │                        │                         │
-       ├─► Click Google Login ─────┼───────────────────────►│                         │
-       │                           │                        │                         │
-       ◄─► Returns auth code ◄─────┼────────────────────────┤                         │
-       │                           │                        │                         │
-       ├─► Send auth code ────────►│                        │                         │
-       │                           ├─► Exchange code ──────►│                         │
-       │                           │   for profile info     │                         │
-       │                           ◄── Returns profile ◄────┤                         │
-       │                           │                                                  │
-       │                           ├─► Sign & Return JWT                              │
-       ◄── Save token in storage ◄─┤                                                  │
-       │                                                                              │
-       ├─► Request with JWT Header ──────────────────────────────────────────────────►│
-       │                                                                              ├─► Decrypt JWT &
-       │                                                                              │   Verify RBAC
+### Authentication
+```typescript
+// JWT verification on every WebSocket handshake
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("Unauthorized"));
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY!);
+  socket.data.user = decoded.user;
+  next();
+});
 ```
 
-1.  **Google OAuth Verification Flow:**
-    *   The client triggers Google OAuth via `@react-oauth/google` and receives an authorization code.
-    *   The client calls `POST /api/auth/login` sending the `code`.
-    *   The `auth` service uses a configured Google API client client-side to exchange this code for an access token, calls `https://www.googleapis.com/oauth2/v2/userinfo` to fetch profile details (name, email, avatar), and upserts the user in MongoDB.
-2.  **JWT Signing & Issuance:**
-    *   The `auth` service signs a JWT containing the user profile object using `process.env.JWT_SECRET_KEY` with an expiration of 15 days.
-    *   To prevent service-specific database queries, services can enrich this token. For example, when a user accesses menu settings, the restaurant service validates ownership, updates the context user object to include their `restaurantId`, and references it in later calls.
-3.  **Role-Based Access Control (RBAC) Middlewares:**
-    *   `isAuth`: Extracts the Bearer token from the `Authorization` header, decodes it locally using the shared secret, and assigns it to `req.user`.
-    *   `isSeller`: Restricts path execution to users having `role === "seller"`.
-    *   `isAdmin`: Restricts path execution to users having `role === "admin"`.
+### Room Architecture
 
----
+| Room Pattern | Who Joins | Events Received |
+|:---|:---|:---|
+| `user:${userId}` | Every authenticated user | Order status updates, rider GPS |
+| `restaurant:${restaurantId}` | Restaurant owners | New order notifications |
+| `order:${orderId}` | Tracking customers | Status changes, delivery updates |
+| `admin` | Platform admins | System-wide notifications |
 
-## 9. AI Features & Hyper-Personalization
+### Live GPS Tracking Pipeline
 
-BhookBuster incorporates Gemini and Groq engines to power semantic searches and dynamically update taste profiles.
-
-### 1. Semantic Search Flow (Atlas Vector Search & JS Cosine Similarity)
-*   **Query Processing:** A user searches for *"spicy food under 300 rupees"*. The `restaurant` service calls AI Gateway's `/internal/nlp/parse`, which prompts a Groq `llama-3.3-70b-versatile` engine (with Gemini fallback) to return structured filters:
-```json
-{
-  "cleanQuery": "spicy food",
-  "filters": {
-    "maxPrice": 300,
-    "isVeg": false,
-    "spiceLevel": "hot"
-  }
-}
 ```
-*   **Embedding Generation:** The clean query is sent to AI Gateway's `/internal/embed` route, producing a 1536-dimensional embedding vector via Gemini's `gemini-embedding-2` model.
-*   **Database Search:** The system executes a MongoDB `$vectorSearch` query against the pre-indexed `embedding` field of `menuitems`. It applies geometric boundaries to target only verified, open restaurants near the user:
-```ts
-{
-  $vectorSearch: {
-    index: "menu_embedding_vector_index",
-    path: "embedding",
-    queryVector: queryVector,
-    numCandidates: 100,
-    limit: 20,
-    filter: { isAvailable: true, restaurantId: { $in: nearbyRestaurantIds } }
-  }
-}
+   Rider's Phone                    Realtime Service                Customer's Map
+  ──────────────                   ─────────────────               ────────────────
+  navigator.geolocation     ──►    socket.on("rider:location")    
+  .watchPosition()                 socket.to(room).emit()     ──►  Leaflet marker
+  { enableHighAccuracy: true }                                     updates in real-time
 ```
-*   **Blended Search Score:** Items are ranked using a combination of semantic relevance, popularity (order volume), and proximity:
-    $$\text{blendedScore} = 0.6 \times \text{vectorScore} + 0.2 \times \text{popularityScore} + 0.2 \times \text{distanceScore}$$
-*   **Resilient Fallback:** If MongoDB's vector search index is unavailable, the service queries candidate documents manually. It calculates cosine similarities inside the service container using the dot product formula divided by the magnitude of the vectors:
-    $$\text{Cosine Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
-
-### 2. Rolling User Taste Profile Centroids
-When users interact with the app, events are published to RabbitMQ. The consumers process these events to recalculate taste profiles:
-
-*   **Order-Based Blending (80/20 Rule):**
-    When a customer pays for an order, the system aggregates the embeddings of the ordered dishes and calculates a centroid. It blends this new vector into the user's existing taste profile using a $0.8$ decay factor to prioritize historical preferences while gradually adapting to new tastes:
-    $$\mathbf{C}_{\text{new}} = 0.8 \times \mathbf{C}_{\text{old}} + 0.2 \times \mathbf{C}_{\text{order}}$$
-*   **Interaction-Based Blending (Learning Rates):**
-    For lightweight actions (e.g., searches, cart additions, ratings), the system adjusts the learning rate ($\alpha$) dynamically based on event weight. For example, a search has a low weight ($0.2$), while adding to cart has a higher weight ($1.5$):
-    $$\alpha = \min(0.05 \times \text{weight}, 0.5)$$
-    $$\mathbf{C}_{\text{new}} = (1 - \alpha) \times \mathbf{C}_{\text{old}} + \alpha \times \mathbf{C}_{\text{item}}$$
-*   **Recommendation Queries:**
-    When a customer opens the home screen, the backend executes a `$vectorSearch` using the user's taste profile `embeddingCentroid` to fetch personalized recommendations for the "For You" section.
-
-### 3. Business Analytics Insights
-The admin and seller dashboards request summaries from the `/internal/insights` endpoint. The AI Gateway processes financial metrics (subtotal, subsidies, payouts) and prompts Groq/Gemini to extract anomalies and recommendations. The system enforces Indian Rupee formatting, requiring the use of `₹` or `Rs.` for all currency outputs.
 
 ---
 
-## 10. Frontend Architecture
+## 🔐 Authentication & Authorization
 
-The frontend is built with React + Vite, TailwindCSS for styling, and Framer Motion for animations.
-
-### 16 Major Pages
-1.  `Home.tsx`: Dashboard displaying personalized "For You" selections, categorized list items, search entries, and geolocation prompts.
-2.  `RestaurantPage.tsx`: Detailed restaurant menus, categories, and item cards.
-3.  `Search.tsx`: Natural language search input displaying search results grouped by restaurant with matching confidence scores.
-4.  `Cart.tsx`: Shopping cart list showing item counts, price calculations, and subtotal changes.
-5.  `Checkout.tsx`: Checkout checkout screen containing addresses selection, delivery fees, and Razorpay/Stripe checkout triggers.
-6.  `OrderPage.tsx`: Live order status updates tracker displaying a Leaflet interactive map with real-time GPS locations.
-7.  `Orders.tsx`: Customer order history list.
-8.  `Account.tsx`: User profile editing, avatar updates, and history metrics.
-9.  `Address.tsx`: Saved delivery addresses manager.
-10. `Login.tsx`: Secured authentication page with Google Login triggers.
-11. `SelectRole.tsx`: User onboarding screen selection (`customer`, `rider`, `seller`) right after first-time Google sign-in.
-12. `Restaurant.tsx`: Onboarding and management dashboard for sellers.
-13. `RiderDashboard.tsx`: Availability controls, order dispatch lists, active delivery managers, and earnings logs for riders.
-14. `Admin.tsx`: Platform statistics, charts, and pending rider/restaurant verification lists.
-15. `OrderSuccess.tsx` & `PaymentsSuccess.tsx`: Post-checkout payment confirmation screens.
-
-### Global State Management (React Context)
-Rather than introducing Redux boilerplate, BhookBuster leverages React Context for global state management:
-
-*   `AppContext.tsx` (`AppProvider`):
-    *   Tracks: `user`, `isAuth`, `cart`, `subtotal`, `quantity`, `location` (latitude, longitude, formatted address), and `city`.
-    *   Operations: `fetchUser()`, `fetchCart()`, `fetchLocation()` (via LocationIQ reverse geocoding API).
-*   `SocketContext.tsx` (`SocketProvider`):
-    *   Tracks the Socket.IO client instance.
-    *   Connects automatically when `isAuth` resolves to `true` and handles cleanup when logging out.
-
----
-
-## 11. CI/CD & Deployment
-
-### GitHub Actions Pipeline (`.github/workflows/deploy.yml`)
-The workflow automates testing and deployment on push to the `main` branch:
-1.  **Code Check:** Installs dependencies and runs ESLint across directories.
-2.  **Container Building:** Builds Docker images for the microservices (`restaurant`, `rider`, `admin`, `auth`, `realtime`, `utils`, `ai-gateway`).
-3.  **Registry Push:** Signs in to AWS ECR or DockerHub and pushes the built container images.
-4.  **Continuous Deployment:** Hits Render webhook endpoints or updates ECS service tasks to pull the fresh container images.
-
-### Docker Configuration
-*   **Dockerfile structure (applied across services):**
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "run", "start"]
 ```
-*   **Docker Compose Configuration:**
-    *   `docker-compose.yml`: Launches RabbitMQ locally with management plugins for development.
-    *   `docker-compose.aws.yml`: Orchestrates container configurations (frontend, restaurant, admin, rider) and assigns ports for localized testing.
+  Browser              Auth Service           Google OAuth           Any API Service
+  ───────              ────────────           ────────────           ───────────────
+     │                      │                      │                       │
+     │── Google Login ─────►│──── Exchange Code ───►│                       │
+     │                      │◄─── Profile Data ────│                       │
+     │                      │                                              │
+     │◄── JWT (15-day) ────│                                              │
+     │    { user, role }    │                                              │
+     │                                                                     │
+     │── Authorization: Bearer <token> ────────────────────────────────────►│
+     │                                                                     │── Verify JWT
+     │                                                                     │── Check RBAC
+     │                                                                     │   (isAuth / isSeller / isAdmin)
+```
 
-### Service Deployment Mapping
-*   **Frontend:** AWS S3 + CloudFront or Vercel.
-*   **APIs / WebSocket Server:** AWS ECS/Fargate or Render (Web Services).
-*   **MongoDB:** MongoDB Atlas (Required for Atlas Vector Search indices).
-*   **Caching & Broker:** AWS ElastiCache (Redis) & Amazon MQ (RabbitMQ).
+### RBAC Middleware Stack
+
+| Middleware | Access Level | Description |
+|:---|:---|:---|
+| `isAuth` | All authenticated users | Decodes JWT, attaches `req.user` |
+| `isSeller` | Restaurant owners only | Verifies `role === "seller"` |
+| `isAdmin` | Platform admins only | Verifies `role === "admin"` |
 
 ---
 
-## 12. Interesting Technical Decisions & Debugging Log
+## 💳 Payment Processing
 
-### Architectural Justifications
-*   **Decoupled WebSockets (Realtime Gateway):**
-    Isolating Socket.IO in a separate service prevents REST API updates or server restarts from dropping active WebSocket connections.
-*   **Hybrid Vector Search Fallback:**
-    If the AI Gateway is down or Atlas Vector Search is misconfigured, the restaurant service falls back to local cosine similarity calculation or tokenized text matching. This ensures the search engine remains functional even when AI dependencies are offline.
-*   **Database-Backed Order Cleanup:**
-    Unpaid orders use a native MongoDB TTL index on the `expiresAt` field. Once an order is paid, the system unsets this field. This keeps the database clean of abandoned checkouts without needing cron jobs.
+BhookBuster supports **dual payment gateways** with automatic verification:
 
-### Critical Debugging Log
-*   **Double Response Bug (Hanging Requests):**
-    In `decrementCartItem`, a response was sent when the quantity hit 1, but the function lacked a return statement. The function would continue execution and attempt to send a second response, causing the request to hang or throw header errors.
-    *   *Fix:* Added an explicit return statement when quantity equals 1.
-*   **Rider updates restriction:**
-    Previously, order statuses could be modified by any client. The system was hardened by verifying the caller's identity at service boundaries. Status updates are now restricted by matching the `x-rider-id` header against the order's assigned `riderId`.
-*   **Cart parameter mismatch:**
-    The `addToCart` handler received arguments in the wrong order: `(itemId, restaurantId)` instead of `(restaurantId, itemId)`. This caused database errors during cart updates.
-    *   *Fix:* Corrected the argument order in the click handler and implemented a self-healing read database query. If a cart contains a menu item that has been deleted, the system automatically purges the orphaned cart document on read.
+| Feature | Razorpay | Stripe |
+|:---|:---|:---|
+| **Flow** | Create Order → Pay → Verify Signature | Create Checkout Session → Redirect → Webhook |
+| **Verification** | `crypto.createHmac('sha256')` signature match | Session ID + status verification |
+| **Post-Payment** | Publishes `PAYMENT_SUCCESS` to RabbitMQ | Same RabbitMQ event |
+| **Currency** | INR (₹) | INR (₹) |
+
+---
+
+## 🖥️ Frontend — 16 Production Pages
+
+Built with **React 19 + Vite + TailwindCSS v4 + Framer Motion** — dark-themed, premium UI:
+
+| Page | Role | Key Features |
+|:---|:---|:---|
+| `Home` | Customer | AI "For You" feed, nearby restaurants, semantic search, geolocation |
+| `Search` | Customer | Natural language AI search, **Find Dishes / Find Restaurants** toggle, confidence scores |
+| `RestaurantPage` | Customer | Full menu with categories, dietary flags, add-to-cart |
+| `Cart` | Customer | Quantity controls, price calculations, restaurant-grouped items |
+| `Checkout` | Customer | Address selection, delivery fee calc, Razorpay/Stripe integration |
+| `OrderPage` | Customer | **Live Leaflet map** with real-time rider GPS, status timeline |
+| `Orders` | Customer | Complete order history with status badges |
+| `Account` | Customer | Profile editing, avatar, order metrics |
+| `Address` | Customer | Saved delivery addresses CRUD |
+| `Restaurant` | Seller | Restaurant onboarding, menu management, analytics dashboard |
+| `RiderDashboard` | Rider | Availability toggle, dispatch queue, **live delivery map**, earnings |
+| `Admin` | Admin | Platform KPIs, **Recharts analytics**, pending verifications |
+| `Login` | Public | Google OAuth integration |
+| `SelectRole` | New User | Onboarding role selection (customer/seller/rider) |
+| `OrderSuccess` | Customer | Post-checkout confirmation |
+| `PaymentSuccess` | Customer | Payment verification screen |
+
+### State Management
+
+| Context | Manages | Key Operations |
+|:---|:---|:---|
+| `AppContext` | `user`, `cart`, `location`, `city`, `isAuth` | `fetchUser()`, `fetchCart()`, `fetchLocation()` (LocationIQ reverse geocoding) |
+| `SocketContext` | Socket.IO client instance | Auto-connect on auth, cleanup on logout |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+| Tool | Version | Purpose |
+|:---|:---|:---|
+| Node.js | ≥ 20.x | Runtime for all services |
+| MongoDB Atlas | — | Database with **Atlas Vector Search** enabled |
+| Redis | ≥ 7.x | Caching layer |
+| RabbitMQ | ≥ 3.x | Message broker (or use Docker) |
+| Google Cloud Console | — | OAuth 2.0 credentials |
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/Pradeepmodak/BhookBuster.git
+cd BhookBuster
+
+# Install dependencies for all services
+cd frontend && npm install && cd ..
+cd services/auth && npm install && cd ../..
+cd services/restaurant && npm install && cd ../..
+cd services/rider && npm install && cd ../..
+cd services/admin && npm install && cd ../..
+cd services/utils && npm install && cd ../..
+cd services/realtime && npm install && cd ../..
+cd services/ai-gateway && npm install && cd ../..
+```
+
+### 2. Configure Environment
+
+```bash
+# Copy the template and fill in your secrets
+cp .env.example .env
+```
+
+**Required secrets:**
+
+| Variable | Where to Get It |
+|:---|:---|
+| `MONGODB_URI` | [MongoDB Atlas](https://cloud.mongodb.com) — create a cluster with Atlas Vector Search |
+| `REDIS_URL` | Local Redis or [Redis Cloud](https://redis.com/cloud/) |
+| `RABBITMQ_URL` | Local via Docker (see below) or [CloudAMQP](https://www.cloudamqp.com/) |
+| `GOOGLE_AI_API_KEY` | [Google AI Studio](https://aistudio.google.com) — for Gemini embeddings |
+| `RAZORPAY_KEY_ID` / `SECRET` | [Razorpay Dashboard](https://dashboard.razorpay.com) |
+| `STRIPE_SECRET_KEY` | [Stripe Dashboard](https://dashboard.stripe.com) |
+| `JWT_SECRET_KEY` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+### 3. Start RabbitMQ (Docker)
+
+```bash
+docker compose up -d
+# Management UI available at http://localhost:15672 (bhookbuster/strongpassword123)
+```
+
+### 4. Create Vector Search Indexes
+
+```bash
+npm run create:vector-indexes
+```
+
+> This creates the `menu_embedding_vector_index` and `restaurant_embedding_vector_index` on MongoDB Atlas.
+
+### 5. Start All Services
+
+Open **7 terminal windows** (or use a process manager):
+
+```bash
+# Terminal 1: Frontend
+cd frontend && npm run dev          # → http://localhost:5173
+
+# Terminal 2: Auth Service
+cd services/auth && npm run dev     # → :5000
+
+# Terminal 3: Restaurant Service
+cd services/restaurant && npm run dev  # → :3000
+
+# Terminal 4: Rider Service
+cd services/rider && npm run dev    # → :5001
+
+# Terminal 5: Admin Service
+cd services/admin && npm run dev    # → :6000
+
+# Terminal 6: Utils Service
+cd services/utils && npm run dev    # → :7000
+
+# Terminal 7: Realtime Service
+cd services/realtime && npm run dev # → :4000
+
+# Terminal 8: AI Gateway
+cd services/ai-gateway && npm run dev  # → :5010
+```
+
+---
+
+## 🐳 Docker Deployment
+
+### Local Development (RabbitMQ only)
+```bash
+docker compose up -d
+```
+
+### Full Stack (AWS)
+```bash
+docker compose -f docker-compose.aws.yml up -d
+```
+
+### Production Deployment Map
+
+| Component | Platform | Configuration |
+|:---|:---|:---|
+| Frontend | Vercel / AWS S3 + CloudFront | Auto-deploy from `main` branch |
+| 7 API Services | Render (via `render.yaml`) / AWS ECS | Each service is independently deployable |
+| MongoDB | MongoDB Atlas | M0+ cluster with Atlas Vector Search |
+| Redis | AWS ElastiCache / Redis Cloud | Failover to direct DB queries |
+| RabbitMQ | Amazon MQ / CloudAMQP | Durable queues with acknowledgment |
+
+---
+
+## 📁 Project Structure
+
+```
+BhookBuster/
+├── frontend/                      # React 19 + Vite SPA
+│   ├── src/
+│   │   ├── pages/                 # 16 route-level page components
+│   │   ├── components/            # 25+ reusable UI components
+│   │   │   ├── ui/                # Design system primitives (Button, Card, Input)
+│   │   │   ├── RiderOrderMap.tsx   # Live GPS tracking with Leaflet
+│   │   │   ├── UserOrderMap.tsx    # Customer-side delivery map
+│   │   │   ├── PlatformInsights.tsx # AI-generated admin analytics
+│   │   │   └── RestaurantInsights.tsx # Seller dashboard with Recharts
+│   │   ├── context/               # AppContext + SocketContext
+│   │   └── config.ts              # Service URL configuration
+│   └── package.json
+│
+├── services/
+│   ├── auth/                      # 🔐 Google OAuth + JWT + RBAC
+│   ├── restaurant/                # 🍕 Catalog, Orders, Search, Recommendations
+│   │   ├── controllers/
+│   │   │   ├── search.ts          # Semantic + Restaurant vector search
+│   │   │   ├── recommendations.ts # "For You" AI pipeline
+│   │   │   ├── menuitem.ts        # Menu CRUD + embedding generation
+│   │   │   └── order.ts           # Full order lifecycle
+│   │   ├── consumers/             # RabbitMQ event processors
+│   │   ├── models/                # Mongoose schemas (9 collections)
+│   │   └── lib/embeddings.ts      # AI Gateway client
+│   ├── rider/                     # 🚴 Dispatch, GPS, Earnings
+│   ├── admin/                     # 🛡️ Governance, Verification, Analytics
+│   ├── utils/                     # 💰 Payments (Razorpay/Stripe) + Uploads
+│   ├── realtime/                  # 📡 Socket.IO Gateway (HMAC-secured)
+│   └── ai-gateway/                # 🤖 Gemini Embeddings + Groq NLP + Insights
+│
+├── docs/                          # Design & Documentation
+│   ├── HLD.md                     # 🏗️ High-Level Design (Mermaid diagrams)
+│   ├── LLD.md                     # 🔧 Low-Level Design (Schemas, APIs, Algorithms)
+│   ├── SYSTEM_DESIGN.md           # System design interview walkthrough
+│   ├── CODE_FLOW.md               # Code-level flow documentation
+│   ├── AWS_DEPLOYMENT.md          # AWS deployment guide
+│   └── LOCAL_TESTING.md           # Local development setup
+│
+├── docker-compose.yml             # Local RabbitMQ
+├── docker-compose.aws.yml         # Full-stack containers
+├── render.yaml                    # Render.com IaC (all 7 services)
+├── .env.example                   # Complete environment template
+└── package.json                   # Root scripts (vector index creation)
+```
+
+---
+
+## 🛡️ Resilience & Error Handling
+
+BhookBuster is designed to **never fully break** — every critical path has a fallback:
+
+| Failure Scenario | System Response |
+|:---|:---|
+| **AI Gateway down** | Search falls back to tokenized text matching with keyword scoring |
+| **Atlas Vector Search misconfigured** | In-memory cosine similarity over fetched documents |
+| **Redis unavailable** | Cache-aside pattern silently skips cache, queries DB directly |
+| **RabbitMQ connection lost** | Automatic reconnection with exponential backoff |
+| **Payment provider error** | MongoDB TTL auto-cleans the unpaid order after 15 minutes |
+| **Geolocation denied** | Prompts user with a clear UI to enable location access |
+
+---
+
+## 🧪 Technical Highlights for Engineers
+
+### MongoDB Aggregation Mastery
+- **Haversine distance** calculated entirely within MongoDB aggregation pipelines (`$degreesToRadians`, `$acos`, `$sin`, `$cos`)
+- **$vectorSearch** with pre-filtered geospatial boundaries for sub-50ms semantic queries
+- **TTL indexes** for self-cleaning order collections
+- **2dsphere indexes** on restaurants and riders for geofenced dispatch
+
+### Distributed Systems Patterns
+- **Event-driven architecture** — payment ↔ fulfillment ↔ dispatch are fully decoupled via RabbitMQ
+- **CQRS-lite** — write-heavy operations (orders, events) are separated from read-heavy cached queries
+- **Cache-aside** with graceful degradation — no Redis dependency for correctness
+- **HMAC-authenticated internal HTTP** — service mesh without a full API gateway
+
+### AI/ML Pipeline
+- **Embedding-based search** using Gemini's `gemini-embedding-2` (1536 dimensions)
+- **Dual-model NLP** — Groq `llama-3.3-70b` primary, Gemini fallback for query parsing
+- **Rolling centroid updates** with configurable decay rates per event type
+- **Blended ranking** combining vector similarity, popularity, and distance scores
+
+---
+
+## 🐛 Known Bugs Fixed & Lessons Learned
+
+| Bug | Root Cause | Fix |
+|:---|:---|:---|
+| **Hanging requests in cart decrement** | Missing `return` after sending response when `qty === 1` → double response attempt | Added explicit `return` statement |
+| **Any client could update order status** | No identity verification on status update endpoints | Added `x-rider-id` header validation against `order.riderId` |
+| **Cart adding wrong items** | `addToCart(itemId, restaurantId)` — arguments were swapped | Corrected argument order + added self-healing orphan cleanup |
+
+---
+
+## 📄 Design Documents & Documentation
+
+| Document | Description |
+|:---|:---|
+| [`docs/HLD.md`](docs/HLD.md) | 🏗️ **High-Level Design** — Architecture diagrams, service boundaries, data flows, deployment strategy |
+| [`docs/LLD.md`](docs/LLD.md) | 🔧 **Low-Level Design** — ER diagrams, all API endpoints, state machines, algorithms, fee calculations |
+| [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) | System design interview walkthrough with Mermaid diagrams |
+| [`docs/CODE_FLOW.md`](docs/CODE_FLOW.md) | Code-level flow documentation for major paths |
+| [`docs/LOCAL_TESTING.md`](docs/LOCAL_TESTING.md) | Step-by-step local development setup guide |
+| [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md) | AWS production deployment walkthrough |
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is for educational and portfolio purposes. Built by [Pradeep Modak](https://github.com/Pradeepmodak).
+
+---
+
+<p align="center">
+  <strong>Built with 🔥 by Pradeep Modak</strong><br/>
+  <em>7 Microservices • 16 Pages • 3 RabbitMQ Queues • 1536-dim AI Vectors • Real-time GPS • Dual Payment Gateways</em>
+</p>
