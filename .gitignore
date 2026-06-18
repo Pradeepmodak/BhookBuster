@@ -25,3 +25,10 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Secrets & Keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
