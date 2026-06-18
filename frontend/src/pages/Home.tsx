@@ -17,6 +17,7 @@ const Home = () => {
   const { location, fetchLocation, loadingLocation, city } = useAppData();
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
+  const searchType = (searchParams.get("searchType") as "dishes" | "restaurants") || "dishes";
 
   const [restaurants, setRestaurants] = useState<RestaurantWithDistance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,6 @@ const Home = () => {
   const [sortBy, setSortBy] = useState<"smart" | "distance" | "name">("smart");
   const [semanticResults, setSemanticResults] = useState<any[]>([]);
   const [semanticRestaurantResults, setSemanticRestaurantResults] = useState<any[]>([]);
-  const [searchType, setSearchType] = useState<"dishes" | "restaurants">("dishes");
   const [forYou, setForYou] = useState<any[]>([]);
 
   const getDistanceKm = ({
@@ -311,35 +311,6 @@ const Home = () => {
         </select>
       </section>
 
-      {/* Search Mode Toggle (Only visible when searching) */}
-      {search && (
-        <div className="flex justify-center mt-6">
-          <div className="bg-[#1a1a1a] p-1 rounded-full border border-[#333] inline-flex shadow-inner">
-            <button
-              type="button"
-              onClick={() => setSearchType("dishes")}
-              className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
-                searchType === "dishes" 
-                  ? "bg-[#facc15] text-black shadow-lg scale-105" 
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Find Dishes
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchType("restaurants")}
-              className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
-                searchType === "restaurants" 
-                  ? "bg-[#facc15] text-black shadow-lg scale-105" 
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Find Restaurants
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* For You Personalized Recommendations */}
       {forYou.length > 0 && !search && (

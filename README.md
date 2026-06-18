@@ -322,7 +322,7 @@ Built with **React 19 + Vite + TailwindCSS v4 + Framer Motion** — dark-themed,
 
 | Page | Role | Key Features |
 |:---|:---|:---|
-| `Home` | Customer | AI "For You" feed, nearby restaurants, geolocation, plus **Semantic Search** with a "Find Dishes / Find Restaurants" toggle and confidence scores |
+| `Home` | Customer | AI "For You" feed, nearby restaurants, geolocation, **unified search bar** with integrated Dishes/Restaurants toggle, textarea input, and AI confidence scores |
 | `RestaurantPage` | Customer | Full menu with categories, dietary flags, add-to-cart |
 | `Cart` | Customer | Quantity controls, price calculations, restaurant-grouped items |
 | `Checkout` | Customer | Address selection, delivery fee calc, Razorpay/Stripe integration |
