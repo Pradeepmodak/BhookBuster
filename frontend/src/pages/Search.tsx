@@ -163,33 +163,6 @@ export default function Search() {
             </button>
           </form>
 
-          {/* Toggle Switch */}
-          <div className="flex justify-center mt-6">
-            <div className="bg-[#1a1a1a] p-1 rounded-full border border-[#333] inline-flex shadow-inner">
-              <button
-                type="button"
-                onClick={() => setSearchType("dishes")}
-                className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
-                  searchType === "dishes" 
-                    ? "bg-[#facc15] text-black shadow-lg scale-105" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                Find Dishes
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchType("restaurants")}
-                className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
-                  searchType === "restaurants" 
-                    ? "bg-[#facc15] text-black shadow-lg scale-105" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                Find Restaurants
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Search Results */}
