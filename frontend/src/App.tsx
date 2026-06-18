@@ -20,7 +20,6 @@ const Orders = lazy(() => import("./pages/Orders"));
 const OrderPage = lazy(() => import("./pages/OrderPage"));
 const RiderDashboard = lazy(() => import("./pages/RiderDashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
-const Search = lazy(() => import("./pages/Search"));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f]">
@@ -62,7 +61,6 @@ const AppRoutes = () => {
                   )
                 }
               />
-              <Route path="/search" element={<Search />} />
               <Route path="/paymentsuccess/:paymentId" element={<PaymentSuccess />} />
               <Route path="/ordersuccess/:sessionId" element={<OrderSuccess />} />
               <Route path="/orders" element={<Orders />} />

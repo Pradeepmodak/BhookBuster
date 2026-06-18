@@ -44,9 +44,10 @@ const Navbar = () => {
 
         <div className="flex items-center gap-4">
           <Link
-            to="/search"
+            to="/"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="rounded-full border border-white/10 bg-white/5 p-3 text-white transition hover:border-[#facc15]/40 hover:text-[#facc15]"
-            title="AI Search"
+            title="Search"
           >
             <BiSearch className="text-2xl" />
           </Link>

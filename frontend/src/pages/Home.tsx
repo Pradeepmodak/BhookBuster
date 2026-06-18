@@ -23,6 +23,8 @@ const Home = () => {
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"smart" | "distance" | "name">("smart");
   const [semanticResults, setSemanticResults] = useState<any[]>([]);
+  const [semanticRestaurantResults, setSemanticRestaurantResults] = useState<any[]>([]);
+  const [searchType, setSearchType] = useState<"dishes" | "restaurants">("dishes");
   const [forYou, setForYou] = useState<any[]>([]);
 
   const getDistanceKm = ({
@@ -60,8 +62,12 @@ const Home = () => {
     try {
       setLoading(true);
       if (search.trim()) {
+        const endpoint = searchType === "dishes" 
+          ? `${restaurantService}/api/search/semantic` 
+          : `${restaurantService}/api/search/restaurants`;
+
         const { data } = await axios.post(
-          `${restaurantService}/api/search/semantic`,
+          endpoint,
           {
             query: search,
             latitude: location.latitude,
@@ -76,12 +82,19 @@ const Home = () => {
           }
         );
         if (!signal?.aborted) {
-          setSemanticResults(data.results ?? []);
+          if (searchType === "dishes") {
+            setSemanticResults(data.results ?? []);
+            setSemanticRestaurantResults([]);
+          } else {
+            setSemanticRestaurantResults(data.results ?? []);
+            setSemanticResults([]);
+          }
           setRestaurants([]);
         }
       } else {
         if (!signal?.aborted) {
           setSemanticResults([]);
+          setSemanticRestaurantResults([]);
         }
         const token = localStorage.getItem("token");
         if (token) {
@@ -133,7 +146,7 @@ const Home = () => {
     return () => {
       controller.abort();
     };
-  }, [location, search]);
+  }, [location, search, searchType]);
 
   const visibleRestaurants = useMemo(() => {
     const base = showOpenOnly ? restaurants.filter((restaurant) => restaurant.isOpen) : restaurants;
@@ -159,7 +172,11 @@ const Home = () => {
   }, [restaurants, showOpenOnly, sortBy]);
 
   const insights = useMemo(() => {
-    const listToUse = search.trim() ? semanticResults.map((r: any) => r.restaurant) : restaurants;
+    const listToUse = search.trim() 
+      ? (searchType === "dishes" 
+          ? semanticResults.map((r: any) => r.restaurant) 
+          : semanticRestaurantResults)
+      : restaurants;
 
     const openCount = listToUse.filter((restaurant: any) => restaurant?.isOpen).length;
     const nearest = [...listToUse].filter((r: any) => r).sort(
@@ -172,7 +189,7 @@ const Home = () => {
       nearestDistance: nearest ? `${nearest.distanceKm} km` : "No results yet",
       restaurantCount: listToUse.length
     };
-  }, [restaurants, semanticResults, search]);
+  }, [restaurants, semanticResults, semanticRestaurantResults, search, searchType]);
 
   if (loadingLocation) {
     return (
@@ -294,6 +311,36 @@ const Home = () => {
         </select>
       </section>
 
+      {/* Search Mode Toggle (Only visible when searching) */}
+      {search && (
+        <div className="flex justify-center mt-6">
+          <div className="bg-[#1a1a1a] p-1 rounded-full border border-[#333] inline-flex shadow-inner">
+            <button
+              type="button"
+              onClick={() => setSearchType("dishes")}
+              className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
+                searchType === "dishes" 
+                  ? "bg-[#facc15] text-black shadow-lg scale-105" 
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Find Dishes
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchType("restaurants")}
+              className={`px-6 py-2.5 rounded-full font-bold transition-all duration-300 text-sm ${
+                searchType === "restaurants" 
+                  ? "bg-[#facc15] text-black shadow-lg scale-105" 
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Find Restaurants
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* For You Personalized Recommendations */}
       {forYou.length > 0 && !search && (
         <section className="mb-10 mt-8">
@@ -331,39 +378,65 @@ const Home = () => {
         <div className="mb-6 mt-8">
           <h2 className="text-2xl font-semibold">AI Semantic Search Results</h2>
           <p className="mt-1 text-neutral-400">
-            Found {semanticResults.reduce((acc, curr) => acc + (curr.dishes?.length || 0), 0)} semantic matches for "{search}"
+            {searchType === "dishes" 
+              ? `Found ${semanticResults.reduce((acc, curr) => acc + (curr.dishes?.length || 0), 0)} semantic matches for "${search}"`
+              : `Found ${semanticRestaurantResults.length} semantic matches for "${search}"`}
           </p>
         </div>
       )}
 
       {search ? (
-        semanticResults.length > 0 ? (
-          <div className="space-y-8">
-            {semanticResults.map((group) => (
-              <div key={group.restaurant._id} className="space-y-4 rounded-[28px] border border-white/10 bg-[#161616] p-6">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{group.restaurant.name}</h3>
-                    <p className="text-xs text-neutral-400">{group.restaurant.autoLocation?.formattedAddress}</p>
+        searchType === "dishes" ? (
+          semanticResults.length > 0 ? (
+            <div className="space-y-8">
+              {semanticResults.map((group) => (
+                <div key={group.restaurant._id} className="space-y-4 rounded-[28px] border border-white/10 bg-[#161616] p-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{group.restaurant.name}</h3>
+                      <p className="text-xs text-neutral-400">{group.restaurant.autoLocation?.formattedAddress}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-[#facc15]">{group.restaurant.distanceKm?.toFixed(1)} km away</span>
                   </div>
-                  <span className="text-xs font-semibold text-[#facc15]">{group.restaurant.distanceKm?.toFixed(1)} km away</span>
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {group.dishes.map((dish: any) => (
+                      <DishSearchResultCard
+                        key={dish._id}
+                        dish={dish}
+                        restaurant={group.restaurant}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {group.dishes.map((dish: any) => (
-                    <DishSearchResultCard
-                      key={dish._id}
-                      dish={dish}
-                      restaurant={group.restaurant}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+              No semantic food matches found for "{search}"
+            </div>
+          )
         ) : (
-          <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
-            No semantic food matches found for "{search}"
-          </div>
+          semanticRestaurantResults.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {semanticRestaurantResults.map((res) => (
+                <RestaurantCard
+                  key={res._id}
+                  id={res._id}
+                  name={res.name}
+                  image={res.image ?? ""}
+                  distance={`${res.distanceKm?.toFixed(2)}`}
+                  isOpen={res.isOpen}
+                  description={`AI Match Score: ${(res.blendedScore * 100).toFixed(0)}%`}
+                  address={res.autoLocation?.formattedAddress}
+                  isVerified={res.isVerified}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+              No semantic restaurant matches found for "{search}"
+            </div>
+          )
         )
       ) : (
         /* Normal Restaurants list */
