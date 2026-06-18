@@ -48,7 +48,7 @@ BhookBuster isn't a CRUD app with a food theme — it's a **production-grade dis
 ```
                     ┌──────────────────────────────────────────────────────────┐
                     │              ⚛️  REACT 19 + VITE + TAILWIND              │
-                    │      (SPA: 16 Pages • Framer Motion • Leaflet Maps)     │
+                    │      (SPA: 15 Pages • Framer Motion • Leaflet Maps)     │
                     └──────┬──────────────┬──────────────┬─────────────┬──────┘
                            │              │              │             │
                       HTTP │         HTTP │         HTTP │   WebSocket │
@@ -316,14 +316,13 @@ BhookBuster supports **dual payment gateways** with automatic verification:
 
 ---
 
-## 🖥️ Frontend — 16 Production Pages
+## 🖥️ Frontend — 15 Production Pages
 
 Built with **React 19 + Vite + TailwindCSS v4 + Framer Motion** — dark-themed, premium UI:
 
 | Page | Role | Key Features |
 |:---|:---|:---|
-| `Home` | Customer | AI "For You" feed, nearby restaurants, semantic search, geolocation |
-| `Search` | Customer | Natural language AI search, **Find Dishes / Find Restaurants** toggle, confidence scores |
+| `Home` | Customer | AI "For You" feed, nearby restaurants, geolocation, plus **Semantic Search** with a "Find Dishes / Find Restaurants" toggle and confidence scores |
 | `RestaurantPage` | Customer | Full menu with categories, dietary flags, add-to-cart |
 | `Cart` | Customer | Quantity controls, price calculations, restaurant-grouped items |
 | `Checkout` | Customer | Address selection, delivery fee calc, Razorpay/Stripe integration |
@@ -473,7 +472,7 @@ docker compose -f docker-compose.aws.yml up -d
 BhookBuster/
 ├── frontend/                      # React 19 + Vite SPA
 │   ├── src/
-│   │   ├── pages/                 # 16 route-level page components
+│   │   ├── pages/                 # 15 route-level page components
 │   │   ├── components/            # 25+ reusable UI components
 │   │   │   ├── ui/                # Design system primitives (Button, Card, Input)
 │   │   │   ├── RiderOrderMap.tsx   # Live GPS tracking with Leaflet
@@ -596,5 +595,5 @@ This project is for educational and portfolio purposes. Built by [Pradeep Modak]
 
 <p align="center">
   <strong>Built with 🔥 by Pradeep Modak</strong><br/>
-  <em>7 Microservices • 16 Pages • 3 RabbitMQ Queues • 1536-dim AI Vectors • Real-time GPS • Dual Payment Gateways</em>
+  <em>7 Microservices • 15 Pages • 3 RabbitMQ Queues • 1536-dim AI Vectors • Real-time GPS • Dual Payment Gateways</em>
 </p>
