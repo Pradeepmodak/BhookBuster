@@ -1,9 +1,20 @@
+/**
+ * @file cloudinary.ts
+ * @summary Express route handler for uploading base64 image Data URIs to Cloudinary with 
+ * strict MIME type and size validation.
+ */
+
+// Express framework for defining API routes
 import express from 'express';
+// Cloudinary SDK for managing and uploading cloud media
 import cloudinary from 'cloudinary';
+// Middleware to ensure the user is authenticated before uploading
 import { isAuth } from '../middlewares/isAuth.js';
 
 const cloudinaryRouter=express.Router();
+// Maximum allowed image size in bytes (5MB)
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// Set of allowed image MIME types
 const ALLOWED_IMAGE_TYPES = new Set([
     "image/jpeg",
     "image/png",
@@ -11,6 +22,12 @@ const ALLOWED_IMAGE_TYPES = new Set([
     "image/gif",
 ]);
 
+/**
+ * Validates and parses a Data URI string to extract its MIME type and byte size.
+ * 
+ * @param buffer - The raw input expected to be a base64 Data URI string.
+ * @returns An object containing the MIME type and size in bytes if valid, or null otherwise.
+ */
 const parseImageDataUri = (buffer: unknown) => {
     if (typeof buffer !== "string") {
         return null;
@@ -32,6 +49,10 @@ const parseImageDataUri = (buffer: unknown) => {
     };
 };
 
+/**
+ * POST /upload
+ * Authenticated route endpoint that validates incoming image Data URIs and uploads them to Cloudinary storage.
+ */
 cloudinaryRouter.post('/upload', isAuth, async (req, res) => {
 try {
     const {buffer}=req.body;
