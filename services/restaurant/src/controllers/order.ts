@@ -1,15 +1,31 @@
+/**
+ * @file order.ts
+ * @summary Controller functions for managing restaurant orders, including creation, fetching, updating status, rider assignment, and rider analytics.
+ */
+
+// --- Middlewares & Types ---
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import TryCatch from "../middlewares/trycatch.js";
+
+// --- Mongoose Models ---
 import Address from "../models/Address.js";
 import Cart from "../models/Cart.js";
 import { IMenuItem } from "../models/MenuItems.js";
 import Order from "../models/Order.js";
 import Restaurant, { IRestaurant } from "../models/Restaurant.js";
+
+// --- External Packages ---
 import axios from "axios";
-import { publishEvent } from "../config/order.publisher.js";
-import { deleteCache } from "../cache/redis.js";
 import mongoose from "mongoose";
 
+// --- Utilities & Services ---
+import { publishEvent } from "../config/order.publisher.js";
+import { deleteCache } from "../cache/redis.js";
+
+
+/**
+ * Creates a new order for a user, calculating distance, fees, and generating an order record.
+ */
 export const createOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
   const user = req.user;
 
@@ -175,6 +191,9 @@ res.json({
 });
 });
 
+/**
+ * Fetches an order's details for internal payment processing, validating internal service keys.
+ */
 export const fetchOrderForPayment = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -204,6 +223,9 @@ export const fetchOrderForPayment = TryCatch(async (req, res) => {
 
 });
 
+/**
+ * Fetches paid orders for a specific restaurant, meant for the restaurant owner's dashboard.
+ */
 export const fetchRestaurantOrders = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     const user = req.user;
@@ -250,6 +272,10 @@ return res.json({
 
 const ALLOWED_STATUSES = ["accepted", "preparing", "ready_for_rider"] as const;
 
+/**
+ * Updates the status of an order by the restaurant owner and emits real-time events.
+ * Also publishes an event to find a rider if the order is ready.
+ */
 export const updateOrderStatus = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     const user = req.user;
@@ -337,6 +363,9 @@ console.log("Event Published Successfully");
 }
 );
 
+/**
+ * Fetches the order history for the currently authenticated user.
+ */
 export const getMyOrders = TryCatch(async (req: AuthenticatedRequest, res) => {
   if (!req.user) {
     return res.status(401).json({
@@ -352,6 +381,9 @@ export const getMyOrders = TryCatch(async (req: AuthenticatedRequest, res) => {
   res.json({ orders });
 });
 
+/**
+ * Fetches a single order's details for the authenticated user who placed it.
+ */
 export const fetchSingleOrder = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     if (!req.user) {
@@ -376,6 +408,9 @@ res.json({ order });
   }
 );
 
+/**
+ * Assigns a specific rider to an order internally and emits real-time assignment events.
+ */
 export const assignRiderToOrder = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -473,6 +508,9 @@ return res.json({
 });
 });
 
+/**
+ * Retrieves the currently active (not delivered) order assigned to a specific rider.
+ */
 export const getCurrentOrdersForRider = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -507,6 +545,9 @@ if (!order) {
 res.json(order);
 });
 
+/**
+ * Finds nearby ready-for-rider orders based on the rider's current coordinates.
+ */
 export const getAvailableOrdersForRider = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -598,6 +639,9 @@ export const getAvailableOrdersForRider = TryCatch(async (req, res) => {
   });
 });
 
+/**
+ * Allows a rider to update the status of their assigned order (e.g., picked_up, delivered).
+ */
 export const updateOrderStatusRider = TryCatch(async (req, res) => {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
@@ -723,6 +767,9 @@ return res.status(400).json({
   message: "Cannot update order with current status",
 });
 });
+/**
+ * Calculates earnings and delivery analytics for a rider for the current year.
+ */
 export const getRiderEarningsAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
   const { riderId } = req.params;
   if (!riderId) {
