@@ -9,7 +9,7 @@ export interface IMenuItem extends Document {
     cuisine?: string;
     tags: string[];
     dietaryFlags: string[];
-    spiceLevel?: "mild" | "medium" | "hot" | "extra-hot";
+    spiceLevel?: "none" | "mild" | "medium" | "hot" | "extra-hot";
     embedding: number[];
     embeddingHash?: string;
     embeddedAt?: Date;
@@ -56,7 +56,7 @@ const schema = new Schema<IMenuItem>({
     },
         spiceLevel: {
         type: String,
-        enum: ["mild", "medium", "hot", "extra-hot"],
+        enum: ["none", "mild", "medium", "hot", "extra-hot"],
     },
         embedding: {
         type: [Number],

@@ -283,7 +283,7 @@ export type NlpSearchResponse = {
 };
 
 const NLP_SYSTEM_PROMPT = `Analyze the user's food search query and extract structured filter parameters.
-Allowed spice levels are: "mild", "medium", "hot", "extra-hot".
+Allowed spice levels are: "none", "mild", "medium", "hot", "extra-hot".
 Identify if the user is asking for vegetarian food (isVeg).
 Extract a maximum price limit if mentioned (maxPrice) as a number (e.g., "under 200" or "below 300").
 Extract a minimum price limit if mentioned (minPrice) as a number (e.g., "above 200" or "greater than 150").
@@ -299,6 +299,7 @@ Return ONLY JSON in this format:
     "minPrice": 100,
     "isVeg": false,
     "spiceLevel": "hot",
+    "cuisine": "Chinese",
     "dietaryFlags": ["gluten-free"]
   }
 }`;
