@@ -6,6 +6,9 @@ import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import TryCatch from "../middlewares/trycatch.js";
 import { requestEmbedding, toStringArray, requestNlpParse } from "../lib/embeddings.js";
 
+/**
+ * Filters that can be optionally applied to semantic search queries.
+ */
 type SemanticSearchFilters = {
   maxPrice?: number;
   minPrice?: number;
@@ -15,6 +18,9 @@ type SemanticSearchFilters = {
   spiceLevel?: string;
 };
 
+/**
+ * Expected schema for the request body of semantic search endpoints.
+ */
 type SemanticSearchBody = {
   query?: string;
   latitude?: number;
@@ -24,6 +30,10 @@ type SemanticSearchBody = {
   filters?: SemanticSearchFilters;
 };
 
+/**
+ * Interface representing the detailed structure of a search result item,
+ * combining MongoDB menu data, computed scores, and joined restaurant information.
+ */
 type SemanticMenuResult = {
   _id: string;
   restaurantId: string;
@@ -53,6 +63,13 @@ type SemanticMenuResult = {
   distanceKm: number;
 };
 
+/**
+ * Validates and limits the results count requested by the client.
+ * Restricts limit between 1 and 50 items (default: 20).
+ * 
+ * @param {unknown} limit - The requested limit value.
+ * @returns {number} The clamped limit.
+ */
 const clampLimit = (limit: unknown) => {
   const parsed = Number(limit || 20);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -62,6 +79,14 @@ const clampLimit = (limit: unknown) => {
   return Math.min(parsed, 50);
 };
 
+/**
+ * Computes the cosine similarity between two numerical vectors of identical length.
+ * Cosine similarity evaluates direction alignment, outputting a value between -1 and 1.
+ * 
+ * @param {number[]} a - First vector array.
+ * @param {number[]} b - Second vector array.
+ * @returns {number} Cosine similarity score, or 0 on error/zero-length.
+ */
 const cosineSimilarity = (a: number[], b: number[]): number => {
   if (!a || !b || a.length !== b.length || a.length === 0) return 0;
   let dot = 0;
@@ -76,6 +101,13 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
+/**
+ * Constructs a MongoDB query object based on the supplied filters to narrow
+ * down $vectorSearch candidates.
+ * 
+ * @param {SemanticSearchFilters} [filters] - The filters payload.
+ * @returns {Record<string, any>} Mongoose query filter object.
+ */
 const buildVectorFilter = (filters?: SemanticSearchFilters) => {
   const vectorFilter: Record<string, any> = {
     isAvailable: true,
@@ -118,6 +150,13 @@ const buildVectorFilter = (filters?: SemanticSearchFilters) => {
   return vectorFilter;
 };
 
+/**
+ * Groups raw list of matching dishes under their respective parent restaurants
+ * to improve frontend display format.
+ * 
+ * @param {SemanticMenuResult[]} items - List of scored menu items.
+ * @returns {Array<{ restaurant: any, dishes: any[] }>} Grouped restaurant search results.
+ */
 const groupByRestaurant = (items: SemanticMenuResult[]) => {
   const groups = new Map<string, {
     restaurant: SemanticMenuResult["restaurant"] & { distanceKm: number };
@@ -143,10 +182,32 @@ const groupByRestaurant = (items: SemanticMenuResult[]) => {
   return [...groups.values()];
 };
 
+/**
+ * Performs a localized vector search for menu items matching a search query.
+ * Blends AI vector similarity with dish popularity (orders volume) and proximity.
+ * If AI services or MongoDB vector aggregation fail, automatically falls back to manual JS text matching.
+ * 
+ * Flow:
+ * 1. Validate query, lat/lng coordinates and radius parameters.
+ * 2. Parse raw query using NLP to extract structured metadata/filters (e.g. "vegan pizza" -> cleanQuery="pizza", filters.isVeg=true).
+ * 3. Generate embeddings from the cleaned query via the AI Gateway.
+ * 4. Perform a geoNear aggregation on Restaurant collection to discover verified, open restaurants within the specified radius.
+ * 5. Attempt MongoDB Atlas $vectorSearch on MenuItems using the query vector.
+ *    - Looks up restaurant details and calculates final spherical distance.
+ *    - Performs a sub-pipeline lookup on Orders to calculate historical order quantity for popularity scoring.
+ *    - Computes blended score: 60% Vector similarity + 20% Distance score + 20% Popularity score.
+ * 6. Fallback (Catch block): Manually filters candidates in JS, generates text match scores using keyword occurrence, computes distance & popularity scores, and sorts items.
+ * 7. Groups dishes by restaurant and returns JSON response.
+ * 
+ * @route POST /api/search/semantic
+ * @param {AuthenticatedRequest} req - Express request object containing the query, latitude, longitude, and optional filters.
+ * @param {Response} res - Express response object.
+ */
 export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) => {
   const { query, latitude, longitude, radiusKm, limit, filters } =
     req.body as SemanticSearchBody;
 
+  // 1. Core validations
   if (
     !query ||
     typeof query !== "string" ||
@@ -167,7 +228,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
 
   const resultLimit = clampLimit(limit);
 
-  // 1. NLP Query Parsing to extract semantic filters
+  // 2. Extract semantic filters from query using NLP parsing
   let parsedCleanQuery = query;
   let parsedFilters: SemanticSearchFilters = {};
   try {
@@ -183,6 +244,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
     ...filters,
   };
 
+  // 3. Generate vector embedding for the query string
   let queryVector: number[] = [];
   let isAiGatewayDown = false;
   try {
@@ -195,7 +257,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
   const queryLngRad = (longitude * Math.PI) / 180;
 
 
-  // 2. Fetch nearby restaurants with their full details and distance
+  // 4. Fetch nearby restaurants with their full details and distance
   const nearbyRestaurants = await Restaurant.aggregate<any>([
     {
       $geoNear: {
@@ -232,6 +294,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
     mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id
   );
 
+  // If no restaurants are in range, return empty result list early
   if (nearbyRestaurantIds.length === 0) {
     return res.json({
       success: true,
@@ -248,18 +311,8 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       $in: nearbyRestaurantIds,
     },
   };
-    // ============================================================
-  // 🔍 DEBUG: SEMANTIC SEARCH LOGS
-  // ============================================================
-  // console.log("\n=============================================================");
-  // console.log("📥 [SEMANTIC SEARCH REQUEST]");
-  // console.log("👉 Original User Query :", query);
-  // console.log("👉 Cleaned Query Words :", parsedCleanQuery);
-  // console.log("👉 Parsed NLP Filters  :", JSON.stringify(parsedFilters, null, 2));
-  // console.log("👉 Final Merged Filters:", JSON.stringify(mergedFilters, null, 2));
-  // console.log("👉 Vector MongoDB Filter:", JSON.stringify(vectorFilter, null, 2));
-  // console.log("=============================================================\n");
-  // ============================================================
+
+  // 5. Build and execute MongoDB Atlas Vector Search aggregation pipeline
   const pipeline: any[] = [
     {
       $vectorSearch: {
@@ -305,6 +358,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
         },
       },
     },
+    // Calculate precise spherical distance dynamically using the Haversine formula
     {
       $addFields: {
         distanceKm: {
@@ -347,11 +401,13 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
         },
       },
     },
+    // Filter results strictly within user's target radius
     {
       $match: {
         distanceKm: { $lte: searchRadiusKm },
       },
     },
+    // Look up historical paid order quantities to calculate popularity
     {
       $lookup: {
         from: "orders",
@@ -385,6 +441,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
         as: "popularity",
       },
     },
+    // Map individual component scores (popularity and distance)
     {
       $addFields: {
         popularityScore: {
@@ -406,6 +463,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
         },
       },
     },
+    // Blend final scores together
     {
       $addFields: {
         blendedScore: {
@@ -435,14 +493,14 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       throw new Error("AI Gateway is down/offline. Skipping MongoDB vector aggregation and falling back to text-based matching.");
     }
     items = await MenuItems.aggregate<SemanticMenuResult>(pipeline);
-    
+
     if (items.length === 0) {
       throw new Error("MongoDB $vectorSearch returned 0 results. Index might be misconfigured. Falling back to JS matching.");
     }
   } catch (error: any) {
     console.warn("MongoDB $vectorSearch failed or AI Gateway was offline. Falling back to JS matching:", error.message || error);
-    
-    // JS Fallback: Filter candidates manually
+
+    // 6. JS Fallback Scorer: Manual validation/match algorithm
     const jsFilter: Record<string, any> = {
       isAvailable: true,
       restaurantId: { $in: nearbyRestaurantIds },
@@ -485,6 +543,8 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       items = [];
     } else {
       const candidateItemIds = candidateItems.map((i) => i._id.toString());
+      
+      // Calculate order quantities for candidates
       const orderCounts = await Order.aggregate([
         {
           $match: {
@@ -509,9 +569,10 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
       const popularityMap = new Map<string, number>();
       orderCounts.forEach((oc) => popularityMap.set(oc._id.toString(), oc.quantity));
 
+      // Calculate matching scores manually
       const scoredItems = candidateItems.map((item: any) => {
         const restaurant = restaurantMap.get(item.restaurantId.toString());
-        
+
         let textMatchScore = 0;
         if (isAiGatewayDown && query) {
           const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -519,7 +580,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
           const descLower = (item.description || "").toLowerCase();
           const tagsLower = (item.tags || []).map((t: string) => t.toLowerCase());
           const cuisineLower = (item.cuisine || "").toLowerCase();
-          
+
           let matches = 0;
           queryWords.forEach(word => {
             if (nameLower.includes(word)) matches += 2.0;
@@ -569,7 +630,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
           distanceKm,
         };
       }).filter(item => item.restaurant !== null);
-      
+
       console.log("JS Fallback: scoredItems count after filter =", scoredItems.length);
 
       scoredItems.sort((a, b) => b.blendedScore - a.blendedScore);
@@ -580,6 +641,7 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
 
   console.log("Returning items:", items?.length);
 
+  // 7. Group items by restaurant and return response
   return res.json({
     success: true,
     count: items.length,
@@ -595,10 +657,24 @@ export const semanticSearch = TryCatch(async (req: AuthenticatedRequest, res) =>
 /**
  * Semantic search specifically for discovering restaurants based on a vibe or concept.
  * E.g., "A romantic Italian place open late"
+ * 
+ * Flow:
+ * 1. Validates body parameters.
+ * 2. Optionally parses search text using NLP.
+ * 3. Generates embedding vector for the query text.
+ * 4. Identifies geographically nearby verified, open restaurants.
+ * 5. Queries MongoDB Atlas $vectorSearch on Restaurant collection using restaurant_embedding_vector_index.
+ * 6. Blends vector similarity score (70%) with geo-distance score (30%).
+ * 7. In case of failure or downtime, falls back to JS manual keyword and geospatial matching.
+ * 
+ * @route POST /api/search/restaurant/semantic
+ * @param {AuthenticatedRequest} req - Express request object containing the query, latitude, longitude, and optional search limit.
+ * @param {Response} res - Express response object.
  */
 export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedRequest, res) => {
   const { query, latitude, longitude, radiusKm, limit } = req.body as SemanticSearchBody;
 
+  // 1. Validation
   if (
     !query ||
     typeof query !== "string" ||
@@ -610,10 +686,10 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
     });
   }
 
-  const searchRadiusKm = Number(radiusKm || 10); // Slightly larger radius for discovering restaurants
+  const searchRadiusKm = Number(radiusKm || 10); // Default radius is 10km for restaurant discovery
   const resultLimit = clampLimit(limit);
 
-  // 1. NLP Query Parsing (Optional)
+  // 2. Parse query clean text via NLP
   let parsedCleanQuery = query;
   try {
     const nlpRes = await requestNlpParse(query);
@@ -622,7 +698,7 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
     console.error("NLP query parsing failed in restaurant search:", error);
   }
 
-  // 2. Generate vector from user query
+  // 3. Generate embeddings
   let queryVector: number[] = [];
   let isAiGatewayDown = false;
   try {
@@ -632,7 +708,7 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
     isAiGatewayDown = true;
   }
 
-  // 3. Find nearby verified & open restaurants via Geospatial Math
+  // 4. Perform geospatial check for verified & open restaurants
   const nearbyRestaurants = await Restaurant.aggregate<any>([
     {
       $geoNear: {
@@ -659,7 +735,7 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
     });
   }
 
-  const nearbyRestaurantIds = nearbyRestaurants.map(r => 
+  const nearbyRestaurantIds = nearbyRestaurants.map(r =>
     mongoose.Types.ObjectId.isValid(r._id) ? new mongoose.Types.ObjectId(r._id) : r._id
   );
 
@@ -668,7 +744,7 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
     restaurantDistanceMap.set(res._id.toString(), res.distance / 1000);
   });
 
-  // 4. Vector Search using the `restaurant_embedding_vector_index`
+  // 5. Atlas Vector Search on restaurants
   const pipeline: any[] = [
     {
       $vectorSearch: {
@@ -702,12 +778,12 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
       throw new Error("AI Gateway is down. Falling back to JS text match.");
     }
     items = await Restaurant.aggregate(pipeline);
-    
+
     if (items.length === 0) {
       throw new Error("MongoDB $vectorSearch returned 0 results. Index might be missing. Proceeding to JS Fallback.");
     }
 
-    // Blend AI Score with Distance Score
+    // Blend vector similarity score and distance score
     items = items.map(item => {
       const distanceKm = restaurantDistanceMap.get(item._id.toString()) || 0;
       const distanceScore = Math.max(0, 1 - distanceKm / searchRadiusKm);
@@ -723,16 +799,17 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
 
   } catch (error: any) {
     console.warn("Fallback to JS text matching for Restaurant Search:", error.message);
-    
+
     const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
-    
+
+    // 6. JS keyword text match scoring fallback
     const candidateItems = nearbyRestaurants.map(item => {
       let textMatchScore = 0;
       const nameLower = (item.name || "").toLowerCase();
       const descLower = (item.description || "").toLowerCase();
       const tagsLower = (item.tags || []).map((t: string) => t.toLowerCase());
       const cuisineLower = (item.cuisineTypes || []).map((t: string) => t.toLowerCase());
-      
+
       let matches = 0;
       queryWords.forEach(word => {
         if (nameLower.includes(word)) matches += 2.0;
@@ -741,7 +818,7 @@ export const restaurantSemanticSearch = TryCatch(async (req: AuthenticatedReques
         else if (tagsLower.some((t: string) => t.includes(word))) matches += 1.2;
       });
       textMatchScore = queryWords.length > 0 ? Math.min(1.0, matches / (queryWords.length * 2.0)) : 0;
-      
+
       const distanceKm = restaurantDistanceMap.get(item._id.toString()) || 0;
       const distanceScore = Math.max(0, 1 - distanceKm / searchRadiusKm);
       const blendedScore = textMatchScore * 0.7 + distanceScore * 0.3;

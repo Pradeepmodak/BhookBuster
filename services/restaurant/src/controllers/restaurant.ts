@@ -128,7 +128,6 @@ export const updateStatusRestaurant = TryCatch(
                 message: "Restaurant not found",
             });
         }
-        
         return res.status(200).json({
             message: "Restaurant status Updated",
             restaurant,
