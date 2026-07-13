@@ -4,59 +4,71 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ═══════════════════════════════════════════════════════════════
-//  Groq Client (Primary for Insights / NLP / Reranking)
+//  Chat Completions (OpenRouter/OpenAI-compatible)
 // ═══════════════════════════════════════════════════════════════
 
-const getGroqKey = (): string | undefined => {
-  return (
-    process.env.GROQ_API_KEY ||
-    (process.env.GEMINI_API_KEY?.startsWith("gsk_") ? process.env.GEMINI_API_KEY : undefined) ||
-    (process.env.GOOGLE_API_KEY?.startsWith("gsk_") ? process.env.GOOGLE_API_KEY : undefined)
-  );
-};
-
-const requestGroq = async (
-  systemPrompt: string,
-  userPrompt: string
+const requestChatCompletion = async (
+  systemPrompt: string | undefined,
+  userPrompt: string,
+  jsonMode = true
 ): Promise<string> => {
-  const apiKey = getGroqKey();
+  const apiKey = 
+    process.env.OPENAI_API_KEY || 
+    process.env.OPENROUTER_API_KEY || 
+    process.env.GROQ_API_KEY || 
+    process.env.GEMINI_API_KEY;
+    
+  const baseUrl = process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1/chat/completions";
+
   if (!apiKey) {
-    throw new Error("Groq API Key is not configured");
+    throw new Error("Chat completion API Key is not configured (set OPENROUTER_API_KEY or OPENAI_API_KEY)");
   }
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: "system", content: systemPrompt });
+  }
+  messages.push({ role: "user", content: userPrompt });
+
+  const body: any = {
+    model: "openai/gpt-oss-120b",
+    messages,
+    temperature: 0.2,
+  };
+
+  if (jsonMode) {
+    // OpenRouter and many OSS models support json_object, but if they don't, 
+    // the system prompt still enforces it.
+    body.response_format = { type: "json_object" };
+  }
+
+  const response = await fetch(baseUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      "HTTP-Referer": "https://bhookbuster.com",
+      "X-Title": "BhookBuster",
     },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Groq API returned status ${response.status}: ${errorText}`);
+    throw new Error(`Chat API returned status ${response.status}: ${errorText}`);
   }
 
   const data: any = await response.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("Groq returned an empty response");
+    throw new Error("Chat API returned an empty response");
   }
 
   return content;
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  Gemini Client
+//  Gemini Client (Strictly for Embeddings)
 // ═══════════════════════════════════════════════════════════════
 
 const getGeminiClient = () => {
@@ -73,41 +85,28 @@ const getGeminiClient = () => {
 const getEmbeddingModel = (): GenerativeModel =>
   getGeminiClient().getGenerativeModel({ model: "gemini-embedding-2" });
 
-const getChatModel = (systemInstruction?: string, jsonMode = true, maxTokens = 600): GenerativeModel => {
-  return getGeminiClient().getGenerativeModel({
-    model: "gemini-2.5-flash",
-    ...(systemInstruction ? { systemInstruction: { role: "system", parts: [{ text: systemInstruction }] } as any } : {}),
-    generationConfig: {
-      maxOutputTokens: maxTokens,
-      temperature: 0.4,
-      ...(jsonMode ? { responseMimeType: "application/json" } : {}),
-    }
-  });
-};
-
-const geminiChat = async (
-  systemInstruction: string | undefined,
-  userPrompt: string,
-  maxTokens = 600,
-  jsonMode = true
-): Promise<string> => {
-  const model = getChatModel(systemInstruction, jsonMode, maxTokens);
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: userPrompt }] }]
-  });
-  return result.response.text();
-};
-
 // ═══════════════════════════════════════════════════════════════
 //  Shared Helpers
 // ═══════════════════════════════════════════════════════════════
 
 const parseJson = <T>(value: string): T => {
-  const cleaned = value
+  let cleaned = value
     .trim()
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/\s*```$/i, "");
+    
+  // Attempt to find the first { or [ to avoid pre-text or post-text hallucinations
+  const firstBrace = cleaned.indexOf("{");
+  const firstBracket = cleaned.indexOf("[");
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    const lastBrace = cleaned.lastIndexOf("}");
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else if (firstBracket !== -1) {
+    const lastBracket = cleaned.lastIndexOf("]");
+    cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+  }
+  
   return JSON.parse(cleaned) as T;
 };
 
@@ -180,7 +179,7 @@ export const embedTexts = async (
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  AI Business Insights (Groq primary → Gemini fallback)
+//  AI Business Insights 
 // ═══════════════════════════════════════════════════════════════
 
 export interface InsightResponse {
@@ -207,26 +206,14 @@ export const generateInsights = async (
   const sanitizedContext = stripPii(context);
   const userMessage = JSON.stringify({ prompt, context: sanitizedContext });
 
-  // Try Groq first (faster, higher free tier limits)
-  const groqKey = getGroqKey();
-  if (groqKey) {
-    try {
-      const responseText = await requestGroq(INSIGHTS_SYSTEM_PROMPT, userMessage);
-      return parseJson<InsightResponse>(responseText);
-    } catch (err: any) {
-      console.warn("⚠️ Groq insights generation failed, falling back to Gemini:", err.message || err);
-    }
-  }
-
-  // Fallback to Gemini
   const rawText = await withRetry(() =>
-    geminiChat(INSIGHTS_SYSTEM_PROMPT, userMessage, 8192, true)
+    requestChatCompletion(INSIGHTS_SYSTEM_PROMPT, userMessage, true)
   );
   return parseJson<InsightResponse>(rawText);
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  Reranking (Groq primary → Gemini fallback)
+//  Reranking
 // ═══════════════════════════════════════════════════════════════
 
 export interface RerankCandidate {
@@ -246,26 +233,14 @@ export const rerankCandidates = async (
 ): Promise<RerankResponse> => {
   const userMessage = JSON.stringify({ query, candidates });
 
-  // Try Groq first
-  const groqKey = getGroqKey();
-  if (groqKey) {
-    try {
-      const responseText = await requestGroq(RERANK_SYSTEM_PROMPT, userMessage);
-      return parseJson<RerankResponse>(responseText);
-    } catch (err: any) {
-      console.warn("⚠️ Groq reranking failed, falling back to Gemini:", err.message || err);
-    }
-  }
-
-  // Fallback to Gemini
   const rawText = await withRetry(() =>
-    geminiChat(undefined, JSON.stringify({ instruction: RERANK_SYSTEM_PROMPT, query, candidates }), 8192, true)
+    requestChatCompletion(RERANK_SYSTEM_PROMPT, userMessage, true)
   );
   return parseJson<RerankResponse>(rawText);
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  NLP Search Query Parser (Groq primary → Gemini fallback)
+//  NLP Search Query Parser
 // ═══════════════════════════════════════════════════════════════
 
 export type QueryFilters = {
@@ -307,20 +282,8 @@ Return ONLY JSON in this format:
 export const parseSearchQuery = async (query: string): Promise<NlpSearchResponse> => {
   const userMessage = `User Query: "${query}"`;
 
-  // Try Groq first
-  const groqKey = getGroqKey();
-  if (groqKey) {
-    try {
-      const responseText = await requestGroq(NLP_SYSTEM_PROMPT, userMessage);
-      return parseJson<NlpSearchResponse>(responseText);
-    } catch (err: any) {
-      console.warn("⚠️ Groq query parsing failed, falling back to Gemini:", err.message || err);
-    }
-  }
-
-  // Fallback to Gemini
   const rawText = await withRetry(() =>
-    geminiChat(NLP_SYSTEM_PROMPT, userMessage, 8192, true)
+    requestChatCompletion(NLP_SYSTEM_PROMPT, userMessage, true)
   );
   return parseJson<NlpSearchResponse>(rawText);
 };
