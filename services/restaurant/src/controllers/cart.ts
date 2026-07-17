@@ -55,7 +55,7 @@ export const fetchMyCart = TryCatch(async (req: AuthenticatedRequest, res) => {
     return res.status(401).json({
       message: "Please Login",
     });
-  }
+}
 
   const userId = req.user._id;
 

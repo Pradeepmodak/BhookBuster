@@ -688,7 +688,7 @@ if (order.status === "rider_assigned") {
 
   await order.save();
 
-  
+ 
 await axios.post(
   `${process.env.REALTIME_SERVICE}/api/v1/internal/emit`,
   {

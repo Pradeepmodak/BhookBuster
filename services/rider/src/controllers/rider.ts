@@ -5,7 +5,6 @@ import TryCatch from "../middlewares/trycatch.js";
 import { Rider } from "../models/Rider.js";
 import { CACHE_TTL, deleteCache, getCache, setCache, withCache } from "../cache/redis.js";
 import mongoose from "mongoose";
-import User from "../models/User.js";
 const requireServiceUrl = (url: string | undefined, name: string) => {
   if (!url) {
     throw new Error(`${name} is not configured`);
@@ -21,95 +20,95 @@ const getUtilsServiceUrl = () =>
 
 const normalizeUserId = (userId: unknown) => String(userId);
 
-export const addRiderProfile = TryCatch(
+export const addRiderProfile = TryCatch (
   async (req: AuthenticatedRequest, res) => {
     const user = req.user;
 
-    if (!user) {
+    if (!user){
       return res.status(401).json({
         message: "Unauthorized",
       });
     }
 
-    if (user.role !== "rider"){
-        return res.status(403).json({
-            message:"Forbidden - Only riders can add rider profile",
-        });
+    if (user.role !== "rider") {
+      return res.status(403).json({
+        message: "Forbidden - Only riders can add rider profile",
+      });
     }
-const normalizedUserId = normalizeUserId(user._id);
-const file = req.file;
-let riderImage = user.image;
+    const normalizedUserId = normalizeUserId(user._id);
+    const file = req.file;
+    let riderImage = user.image;
 
-if (file) {
-  const fileBuffer = getBuffer(file);
+    if (file) {
+      const fileBuffer = getBuffer(file);
 
-  if (!fileBuffer?.content) {
-    return res.status(500).json({
-      message: "Failed to generate image buffer",
-    });
-  }
-
-  const utilsServiceUrl = getUtilsServiceUrl();
-  if (utilsServiceUrl) {
-    const { data: uploadResult } = await axios.post(
-      `${utilsServiceUrl}/api/upload`,
-      {
-        buffer:fileBuffer.content,
-
+      if (!fileBuffer?.content) {
+        return res.status(500).json({
+          message: "Failed to generate image buffer",
+        });
       }
-    );
-    riderImage = uploadResult.url;
-  }
-}
-const {
-  phoneNumber,
-  aadharNumber,
-  drivingLicenseNumber,
-  latitude,
-  longitude,
-} = req.body;
 
-if (
-  !phoneNumber ||
-  !aadharNumber ||
-  !drivingLicenseNumber ||
-  latitude === undefined ||
-  longitude === undefined
-) {
-  return res.status(400).json({
-    message: "All fields are required",
-  });
-}
+      const utilsServiceUrl = getUtilsServiceUrl();
+      if (utilsServiceUrl) {
+        const { data: uploadResult } = await axios.post(
+          `${utilsServiceUrl}/api/upload`,
+          {
+            buffer: fileBuffer.content,
 
-const existingProfile = await Rider.findOne({
-  userId: normalizedUserId,
-});
+          }
+        );
+        riderImage = uploadResult.url;
+      }
+    }
+    const {
+      phoneNumber,
+      aadharNumber,
+      drivingLicenseNumber,
+      latitude,
+      longitude,
+    } = req.body;
 
-if (existingProfile) {
-  return res.status(400).json({
-    message: "Rider profile already exists",
-  });
-}
-const riderProfile = await Rider.create({
-  userId: normalizedUserId,
-  picture: riderImage,
-  phoneNumber,
-  aadharNumber,
-  drivingLicenseNumber,
-  location: {
-    type: "Point",
-    coordinates: [Number(longitude), Number(latitude)],
-  },
-  isAvailable: false,
-  isVerified: false,
-});
-await deleteCache(`rider:profile:${normalizedUserId}`);
-await deleteCache("admin:verification:riders");
-await deleteCache("admin:stats");
-return res.status(201).json({
-    message:"Rider profile created successfully",
-    riderProfile
-})
+    if (
+      !phoneNumber ||
+      !aadharNumber ||
+      !drivingLicenseNumber ||
+      latitude === undefined ||
+      longitude === undefined
+    ) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    const existingProfile = await Rider.findOne({
+      userId: normalizedUserId,
+    });
+
+    if (existingProfile) {
+      return res.status(400).json({
+        message: "Rider profile already exists",
+      });
+    }
+    const riderProfile = await Rider.create({
+      userId: normalizedUserId,
+      picture: riderImage,
+      phoneNumber,
+      aadharNumber,
+      drivingLicenseNumber,
+      location: {
+        type: "Point",
+        coordinates: [Number(longitude), Number(latitude)],
+      },
+      isAvailable: false,
+      isVerified: false,
+    });
+    await deleteCache(`rider:profile:${normalizedUserId}`);
+    await deleteCache("admin:verification:riders");
+    await deleteCache("admin:stats");
+    return res.status(201).json({
+      message: "Rider profile created successfully",
+      riderProfile
+    })
   }
 );
 
@@ -150,63 +149,63 @@ export const toggleRiderAvailability = TryCatch(
         message: "Only riders can update rider profile",
       });
     }
-const { isAvailable, latitude, longitude } = req.body;
+    const { isAvailable, latitude, longitude } = req.body;
 
-if (typeof isAvailable !== "boolean") {
-  return res.status(400).json({
-    message: "isAvailable must be boolean",
-  });
-}
+    if (typeof isAvailable !== "boolean") {
+      return res.status(400).json({
+        message: "isAvailable must be boolean",
+      });
+    }
 
-if (latitude === undefined || longitude === undefined) {
-  return res.status(400).json({
-    message: "location is required",
-  });
-}
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
+        message: "location is required",
+      });
+    }
 
-const parsedLatitude = Number(latitude);
-const parsedLongitude = Number(longitude);
+    const parsedLatitude = Number(latitude);
+    const parsedLongitude = Number(longitude);
 
-if (Number.isNaN(parsedLatitude) || Number.isNaN(parsedLongitude)) {
-  return res.status(400).json({
-    message: "location must be valid coordinates",
-  });
-}
+    if (Number.isNaN(parsedLatitude) || Number.isNaN(parsedLongitude)) {
+      return res.status(400).json({
+        message: "location must be valid coordinates",
+      });
+    }
 
-const normalizedUserId = normalizeUserId(user._id);
-const rider = await Rider.findOne({
-  userId: normalizedUserId,
-});
+    const normalizedUserId = normalizeUserId(user._id);
+    const rider = await Rider.findOne({
+      userId: normalizedUserId,
+    });
 
-if (!rider) {
-  return res.status(404).json({
-    message: "Rider profile not found",
-  });
-}
+    if (!rider) {
+      return res.status(404).json({
+        message: "Rider profile not found",
+      });
+    }
 
-if (isAvailable && !rider.isVerified) {
-    return res.status(403).json({
-  message: "Rider is not verified",
-});
-}
-rider.isAvailable = isAvailable;
+    if (isAvailable && !rider.isVerified) {
+      return res.status(403).json({
+        message: "Rider is not verified",
+      });
+    }
+    rider.isAvailable = isAvailable;
 
-rider.location = {
-  type: "Point",
-  coordinates: [parsedLongitude, parsedLatitude],
-};
-rider.lastActiveAt = new Date();
-await rider.save();
+    rider.location = {
+      type: "Point",
+      coordinates: [parsedLongitude, parsedLatitude],
+    };
+    rider.lastActiveAt = new Date();
+    await rider.save();
 
-await deleteCache(`rider:profile:${normalizedUserId}`);
-await deleteCache(`rider:assigned-order:${rider._id}`);
+    await deleteCache(`rider:profile:${normalizedUserId}`);
+    await deleteCache(`rider:assigned-order:${rider._id}`);
 
-res.json({
-  message: isAvailable
-    ? "Rider is now online"
-    : "Rider is now offline",
-    rider
-});
+    res.json({
+      message: isAvailable
+        ? "Rider is now online"
+        : "Rider is now offline",
+      rider
+    });
   }
 );
 
@@ -228,44 +227,44 @@ export const acceptOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
     return res.status(404).json({ message: "rider not found" });
   }
   try {
-  const { data } = await axios.put(
-    `${restaurantServiceUrl}/api/order/assign/rider`,
-    {
-      orderId,
-      riderId: rider._id.toString(),
-      riderUserId: rider.userId,
-      riderName: req.user?.name || "Rider",
-      riderPhone: rider.phoneNumber,
-    },
-    {
-      headers: {
-        "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
-        "x-rider-id": rider._id.toString(),
+    const { data } = await axios.put(
+      `${restaurantServiceUrl}/api/order/assign/rider`,
+      {
+        orderId,
+        riderId: rider._id.toString(),
+        riderUserId: rider.userId,
+        riderName: req.user?.name || "Rider",
+        riderPhone: rider.phoneNumber,
       },
-    }
-  );
-  if (data.success) {
-  await Rider.findOneAndUpdate(
-    {
-      userId: normalizedRiderUserId,
-      isAvailable: true,
-    },
-    { isAvailable: false },
-    { new: true }
-  );
-  await deleteCache(`rider:profile:${normalizedRiderUserId}`);
-  await deleteCache(`rider:assigned-order:${rider._id}`);
-  await setCache(`rider:queue:${normalizedRiderUserId}`, [], CACHE_TTL.lists);
+      {
+        headers: {
+          "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+          "x-rider-id": rider._id.toString(),
+        },
+      }
+    );
+    if (data.success) {
+      await Rider.findOneAndUpdate(
+        {
+          userId: normalizedRiderUserId,
+          isAvailable: true,
+        },
+        { isAvailable: false },
+        { new: true }
+      );
+      await deleteCache(`rider:profile:${normalizedRiderUserId}`);
+      await deleteCache(`rider:assigned-order:${rider._id}`);
+      await setCache(`rider:queue:${normalizedRiderUserId}`, [], CACHE_TTL.lists);
 
-  return res.json({ message: "Order accepted", order: data.order });
-}
-} catch (error) {
-  return res.status(400).json({
-    message: axios.isAxiosError(error)
-      ? error.response?.data?.message || "Unable to accept order"
-      : "Unable to accept order",
-  });
-}
+      return res.json({ message: "Order accepted", order: data.order });
+    }
+  } catch (error) {
+    return res.status(400).json({
+      message: axios.isAxiosError(error)
+        ? error.response?.data?.message || "Unable to accept order"
+        : "Unable to accept order",
+    });
+  }
 });
 
 export const fetchMyCurrentOrder = TryCatch(async (req: AuthenticatedRequest, res) => {
@@ -376,7 +375,6 @@ export const fetchDeliveryQueue = TryCatch(async (req: AuthenticatedRequest, res
   });
 });
 
-// Import User at top level conceptually, moved to the top.
 
 export const updateRiderProfile = TryCatch(async (req: AuthenticatedRequest, res) => {
   const user = req.user;
@@ -385,15 +383,11 @@ export const updateRiderProfile = TryCatch(async (req: AuthenticatedRequest, res
   }
   const normalizedUserId = normalizeUserId(user._id);
 
-  const { name, phoneNumber, aadharNumber, drivingLicenseNumber } = req.body;
+  const { phoneNumber, aadharNumber, drivingLicenseNumber } = req.body;
   const file = req.file;
 
   const rider = await Rider.findOne({ userId: normalizedUserId });
   if (!rider) return res.status(404).json({ message: "Rider profile not found" });
-
-  if (name) {
-    await User.findByIdAndUpdate(normalizedUserId, { name });
-  }
 
   if (phoneNumber) {
     rider.phoneNumber = phoneNumber;
@@ -445,50 +439,50 @@ export const updateOrderStatus = TryCatch(
 
     if (!rider || !rider._id) {
       return res.status(404).json({
-        message:"Rider profile not found",
+        message: "Rider profile not found",
       })
     }
 
-   const orderId = typeof req.params.orderId === "string" ? req.params.orderId : null;
+    const orderId = typeof req.params.orderId === "string" ? req.params.orderId : null;
 
-   if (!orderId) {
-    return res.status(400).json({
-      message: "Order id is required",
-    });
-   }
-
-   if (!mongoose.Types.ObjectId.isValid(orderId)) {
-    return res.status(400).json({
-      message: "Invalid order id",
-    });
-   }
-
-try {
-  const { data } = await axios.put(
-    `${restaurantServiceUrl}/api/order/update/status/rider/${orderId}`,
-    {},
-    {
-      headers: {
-        "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
-        "x-rider-id": rider._id.toString(),
-      },
+    if (!orderId) {
+      return res.status(400).json({
+        message: "Order id is required",
+      });
     }
-  );
-  res.json({
-    message:data.message,
-  })
-} catch (error) {
-  console.error("Rider order status update failed:", error);
 
-  if (axios.isAxiosError(error)) {
-    return res.status(error.response?.status || 500).json({
-      message: error.response?.data?.message || "Failed to update order status",
-    });
-  }
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({
+        message: "Invalid order id",
+      });
+    }
 
-  res.status(500).json({
-    message:"Failed to update order status",
-  })
-}
+    try {
+      const { data } = await axios.put(
+        `${restaurantServiceUrl}/api/order/update/status/rider/${orderId}`,
+        {},
+        {
+          headers: {
+            "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
+            "x-rider-id": rider._id.toString(),
+          },
+        }
+      );
+      res.json({
+        message: data.message,
+      })
+    } catch (error) {
+      console.error("Rider order status update failed:", error);
+
+      if (axios.isAxiosError(error)) {
+        return res.status(error.response?.status || 500).json({
+          message: error.response?.data?.message || "Failed to update order status",
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to update order status",
+      })
+    }
   }
 );
