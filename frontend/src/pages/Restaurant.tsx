@@ -14,7 +14,6 @@ import StatCard from "../components/ui/StatCard";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { FiActivity, FiBarChart2, FiDollarSign, FiPackage, FiTrendingUp, FiUsers } from "react-icons/fi";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type SellerTab = "menu" | "add-item" | "sales";
 
