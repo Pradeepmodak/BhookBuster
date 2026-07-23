@@ -597,3 +597,5 @@ This project is for educational and portfolio purposes. Built by [Pradeep Modak]
   <strong>Built with 🔥 by Pradeep Modak</strong><br/>
   <em>7 Microservices • 15 Pages • 3 RabbitMQ Queues • 1536-dim AI Vectors • Real-time GPS • Dual Payment Gateways</em>
 </p>
+
+<!-- hello -->
