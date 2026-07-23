@@ -93,6 +93,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       # ── Deploy Frontend to Vercel (Explicit CLI — no GUI dependency) ────
       # Uses Vercel CLI to deploy from the /frontend subdirectory.
       # This bypasses Vercel's GitHub integration entirely, meaning
@@ -114,6 +119,7 @@ jobs:
             echo "Skipping Vercel CLI deploy step. Vercel Git Integration handles automatic deployment via root vercel.json."
           else
             npm install -g vercel@latest
+            npm ci || npm install
             vercel pull --yes --environment=production --token=$VERCEL_TOKEN
             vercel build --prod --token=$VERCEL_TOKEN
             vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
