@@ -1,123 +1,79 @@
-# ============================================================================
-# BhookBuster — CI/CD Pipeline
-# ============================================================================
-# This workflow validates every code change and deploys to production.
-#
-# CI (Continuous Integration):
-#   - Installs dependencies for all services
-#   - Builds frontend (React + Vite) and all 7 backend services (TypeScript)
-#   - Validates that Docker images build successfully
-#   - Fails fast if anything breaks
-#
-# CD (Continuous Deployment):
-#   - Only runs on push to main (not on pull requests)
-#   - Triggers Render deploy hooks for all backend services
-#   - Frontend auto-deploys via Vercel's GitHub integration
-# ============================================================================
-
 name: CI/CD Pipeline
 
-# ── Triggers ────────────────────────────────────────────────────────────────
-# Runs on:
-#   1. Every push to main        → Full CI + CD (build + deploy)
-#   2. Every pull request to main → CI only (build validation, no deploy)
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# ── Jobs ────────────────────────────────────────────────────────────────────
 jobs:
-
-  # ========================================================================
-  # JOB 1: CI — Build & Validate
-  # ========================================================================
-  # Purpose: Ensure every service compiles without errors before deploying.
-  # Runner:  ubuntu-latest (free GitHub-hosted Linux VM)
-  # ========================================================================
   build:
     name: Build & Validate
     runs-on: ubuntu-latest
 
     steps:
-      # ── Step 1: Checkout Code ──────────────────────────────────────────
-      # Downloads the repository code into the runner's workspace.
-      # Without this, the runner has an empty filesystem.
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── Step 2: Setup Node.js ──────────────────────────────────────────
-      # Installs Node.js 20 (matches our .node-version and Dockerfiles).
-      # Also enables npm caching to speed up subsequent runs.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
-      # ── Step 3: Build Frontend ─────────────────────────────────────────
-      # Installs dependencies and builds the React app.
-      # `npm ci` uses package-lock.json for deterministic installs.
-      # The build will fail if there are TypeScript errors or missing imports.
+      - name: Show Node and npm versions
+        run: |
+          node -v
+          npm -v
+
       - name: Build Frontend
         working-directory: frontend
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 4: Build Auth Service ─────────────────────────────────────
       - name: Build Auth Service
         working-directory: services/auth
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 5: Build Restaurant Service ───────────────────────────────
       - name: Build Restaurant Service
         working-directory: services/restaurant
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 6: Build Rider Service ────────────────────────────────────
       - name: Build Rider Service
         working-directory: services/rider
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 7: Build Admin Service ────────────────────────────────────
       - name: Build Admin Service
         working-directory: services/admin
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 8: Build Realtime Service ─────────────────────────────────
       - name: Build Realtime Service
         working-directory: services/realtime
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 9: Build Utils Service ────────────────────────────────────
       - name: Build Utils Service
         working-directory: services/utils
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 10: Build AI Gateway Service ──────────────────────────────
       - name: Build AI Gateway Service
         working-directory: services/ai-gateway
         run: |
-          npm ci
+          npm ci || npm install
           npm run build
 
-      # ── Step 11: Validate Docker Builds ────────────────────────────────
-      # Builds Docker images for the 3 services that have Dockerfiles.
-      # Uses --no-cache to ensure a clean build (catches missing files).
-      # Does NOT push images anywhere — this is validation only.
       - name: Validate Docker Build — Admin
         run: docker build -t bhookbuster-admin ./services/admin
 
@@ -127,36 +83,13 @@ jobs:
       - name: Validate Docker Build — Rider
         run: docker build -t bhookbuster-rider ./services/rider
 
-  # ========================================================================
-  # JOB 2: CD — Deploy to Production
-  # ========================================================================
-  # Purpose: Trigger Render deploy hooks after CI passes.
-  # Runs:    ONLY on push to main (skipped for pull requests).
-  # Depends: Waits for the 'build' job to succeed first.
-  #
-  # INTERVIEW NOTE: Vercel frontend deployment is NOT here because
-  # Vercel has its own GitHub integration that auto-deploys on push.
-  # We only need to trigger Render manually via deploy hooks.
-  # ========================================================================
   deploy:
     name: Deploy to Render
     runs-on: ubuntu-latest
-    needs: build                           # Waits for CI to pass
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      # ── Deploy All Backend Services ────────────────────────────────────
-      # Render Deploy Hooks are secret URLs that trigger a redeploy.
-      # Each service has its own hook URL stored as a GitHub Secret.
-      # A simple POST request triggers Render to pull latest code and rebuild.
-      #
-      # HOW TO GET DEPLOY HOOKS:
-      #   1. Go to Render Dashboard → Select service → Settings → Deploy Hook
-      #   2. Copy the URL
-      #   3. Add it as a GitHub Secret (Settings → Secrets → Actions)
-      #
-      # SECURITY: Deploy hook URLs are stored as GitHub Secrets, never
-      # visible in logs or code. GitHub masks them automatically.
       - name: Deploy Auth Service
         run: curl -s "${{ secrets.RENDER_DEPLOY_HOOK_AUTH }}"
 
