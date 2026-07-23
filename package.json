@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "npm --prefix frontend run build",
     "create:vector-indexes": "tsx scripts/createVectorIndexes.ts"
   },
   "dependencies": {
