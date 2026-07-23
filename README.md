@@ -598,4 +598,4 @@ This project is for educational and portfolio purposes. Built by [Pradeep Modak]
   <em>7 Microservices • 15 Pages • 3 RabbitMQ Queues • 1536-dim AI Vectors • Real-time GPS • Dual Payment Gateways</em>
 </p>
 
-<!-- hello 1 2 3 4 5-->
+<!-- hello 1 2 3 4 5 6-->
