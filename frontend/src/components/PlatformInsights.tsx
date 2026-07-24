@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { restaurantService } from "../config";
+import { insightText, insightTextList } from "../utils/insightText";
 
 type PlatformAnalytics = {
   revenue: {
@@ -37,9 +38,9 @@ type PlatformAnalytics = {
   }>;
   anomalyAlerts: string[];
   insights?: {
-    summary: string;
-    anomalies: string[];
-    recommendations: string[];
+    summary: unknown;
+    anomalies: unknown[];
+    recommendations: unknown[];
   };
 };
 
@@ -95,7 +96,10 @@ const PlatformInsights = () => {
       setAnswers((current) => [
         {
           question: trimmedQuestion,
-          summary: data.summary || data.error || "No answer available.",
+          summary:
+            insightText(data.summary) ||
+            insightText(data.error) ||
+            "No answer available.",
         },
         ...current,
       ]);
@@ -116,9 +120,8 @@ const PlatformInsights = () => {
     }
   };
 
-  const formatText = (text: string) => {
-    if (typeof text !== "string") return text;
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+  const formatText = (text: unknown) => {
+    const parts = insightText(text).split(/(\*\*.*?\*\*)/g);
     return parts.map((part, index) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
@@ -138,6 +141,9 @@ const PlatformInsights = () => {
       </aside>
     );
   }
+
+  const insightAnomalies = insightTextList(analytics?.insights?.anomalies);
+  const insightRecommendations = insightTextList(analytics?.insights?.recommendations);
 
   return (
     <aside className="space-y-5 rounded-[28px] border border-white/10 bg-[#171717] p-5">
@@ -225,11 +231,11 @@ const PlatformInsights = () => {
           <h3 className="text-sm font-semibold text-[#facc15]">AI business insights</h3>
           <p className="text-sm text-[#f5dea0] leading-relaxed">{formatText(analytics.insights.summary)}</p>
           
-          {Array.isArray(analytics.insights.anomalies) && analytics.insights.anomalies.length > 0 && (
+          {insightAnomalies.length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase text-red-300">AI anomalies</p>
               <ul className="mt-1 space-y-1 text-xs text-red-200 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {analytics.insights.anomalies.map((item, idx) => (
+                {insightAnomalies.map((item, idx) => (
                   <li key={idx} className="rounded-lg bg-red-500/10 px-2 py-1.5 border border-red-500/20">
                     • {formatText(item)}
                   </li>
@@ -238,11 +244,11 @@ const PlatformInsights = () => {
             </div>
           )}
 
-          {Array.isArray(analytics.insights.recommendations) && analytics.insights.recommendations.length > 0 && (
+          {insightRecommendations.length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase text-emerald-300">AI recommendations</p>
               <ul className="mt-1 space-y-1 text-xs text-emerald-200 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {analytics.insights.recommendations.map((item, idx) => (
+                {insightRecommendations.map((item, idx) => (
                   <li key={idx} className="rounded-lg bg-emerald-500/10 px-2 py-1.5 border border-emerald-500/20">
                     • {formatText(item)}
                   </li>

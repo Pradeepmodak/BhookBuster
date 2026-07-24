@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { restaurantService } from "../config";
+import { insightText, insightTextList } from "../utils/insightText";
 
 type RevenuePoint = {
   date: string;
@@ -46,9 +47,9 @@ type PeakHour = {
 
 type InsightPayload = {
   insights: {
-    summary: string;
-    anomalies: string[];
-    recommendations: string[];
+    summary: unknown;
+    anomalies: unknown[];
+    recommendations: unknown[];
   };
 };
 
@@ -153,7 +154,10 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
       setAnswers((current) => [
         {
           question: trimmedQuestion,
-          summary: data.summary || data.error || "No answer available.",
+          summary:
+            insightText(data.summary) ||
+            insightText(data.error) ||
+            "No answer available.",
           template: data.template,
         },
         ...current,
@@ -175,9 +179,8 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
     }
   };
 
-  const formatText = (text: string) => {
-    if (typeof text !== "string") return text;
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+  const formatText = (text: unknown) => {
+    const parts = insightText(text).split(/(\*\*.*?\*\*)/g);
     return parts.map((part, index) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
@@ -192,15 +195,7 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
 
   const renderSummary = () => {
     if (!insights?.summary) return "No insight summary yet.";
-    if (typeof insights.summary === "string") return formatText(insights.summary);
-    if (typeof insights.summary === "object") {
-      const obj = insights.summary as Record<string, any>;
-      if (typeof obj.text === "string") return formatText(obj.text);
-      if (typeof obj.summary === "string") return formatText(obj.summary);
-      if (typeof obj.message === "string") return formatText(obj.message);
-      return JSON.stringify(obj);
-    }
-    return formatText(String(insights.summary));
+    return formatText(insights.summary);
   };
 
   if (loading) {
@@ -213,6 +208,9 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
       </div>
     );
   }
+
+  const insightAnomalies = insightTextList(insights?.anomalies);
+  const insightRecommendations = insightTextList(insights?.recommendations);
 
   return (
     <div className="space-y-6">
@@ -360,10 +358,10 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
           <div className="rounded-xl border border-red-900/30 bg-red-500/5 p-4 border-l-4 border-l-red-500">
             <p className="text-[10px] font-bold uppercase tracking-wider text-red-400">AI Anomalies</p>
             <ul className="mt-3 space-y-2 text-xs text-neutral-300 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {(Array.isArray(insights?.anomalies) ? insights.anomalies : []).map((item) => (
-                <li key={typeof item === "string" ? item : JSON.stringify(item)} className="flex gap-2">
+              {insightAnomalies.map((item) => (
+                <li key={item} className="flex gap-2">
                   <span className="shrink-0 text-red-500">&bull;</span>
-                  <span>{typeof item === "string" ? formatText(item) : JSON.stringify(item)}</span>
+                  <span>{formatText(item)}</span>
                 </li>
               ))}
             </ul>
@@ -371,10 +369,10 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
           <div className="rounded-xl border border-[#facc15]/30 bg-[#facc15]/5 p-4 border-l-4 border-l-[#facc15]">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#facc15]">AI Recommendations</p>
             <ul className="mt-3 space-y-2 text-xs text-neutral-300 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {(Array.isArray(insights?.recommendations) ? insights.recommendations : []).map((item) => (
-                <li key={typeof item === "string" ? item : JSON.stringify(item)} className="flex gap-2">
+              {insightRecommendations.map((item) => (
+                <li key={item} className="flex gap-2">
                   <span className="shrink-0 text-[#facc15]">&bull;</span>
-                  <span>{typeof item === "string" ? formatText(item) : JSON.stringify(item)}</span>
+                  <span>{formatText(item)}</span>
                 </li>
               ))}
             </ul>

@@ -24,12 +24,11 @@ const requestChatCompletion = async (
     throw new Error("Chat completion API Key is not configured (set GROQ_API_KEY)");
   }
 
-  const hasJsonInstruction = /\bjson\b/i.test(
-    [systemPrompt, userPrompt].filter(Boolean).join(" ")
-  );
+  const jsonInstruction =
+    "Return only valid JSON. Do not include markdown fences or extra commentary.";
   const effectiveSystemPrompt =
-    jsonMode && !hasJsonInstruction
-      ? `${systemPrompt || ""}\n\nReturn only valid JSON.`
+    jsonMode
+      ? [systemPrompt, jsonInstruction].filter(Boolean).join("\n\n")
       : systemPrompt;
 
   const messages = [];
@@ -196,6 +195,55 @@ export interface InsightResponse {
   recommendations: string[];
 }
 
+const textFromValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value.map(textFromValue).filter(Boolean).join(" ");
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const preferredText = ["description", "message", "text", "summary", "title"]
+      .map((key) => textFromValue(record[key]))
+      .find(Boolean);
+    const type = textFromValue(record.type);
+
+    if (type && preferredText) return `${type}: ${preferredText}`;
+    if (preferredText) return preferredText;
+
+    return Object.entries(record)
+      .map(([key, nestedValue]) => `${key}: ${textFromValue(nestedValue)}`)
+      .filter((entry) => !entry.endsWith(": "))
+      .join(", ");
+  }
+
+  return "";
+};
+
+const textArrayFromValue = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    const text = textFromValue(value).trim();
+    return text ? [text] : [];
+  }
+
+  return value.map(textFromValue).map((item) => item.trim()).filter(Boolean);
+};
+
+const normalizeInsightResponse = (value: unknown): InsightResponse => {
+  const record =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+
+  return {
+    summary: textFromValue(record.summary),
+    anomalies: textArrayFromValue(record.anomalies),
+    recommendations: textArrayFromValue(record.recommendations),
+  };
+};
+
 const INSIGHTS_SYSTEM_PROMPT = `You are an elite AI business analyst for a food delivery platform.
 Analyze the provided restaurant analytics data and generate actionable, highly engaging insights.
 Make your response attractive and interactive. Use clear formatting, emphasize key metrics, and provide deep context explaining *why* the data matters, distinguishing between platform-wide or single-restaurant data.
@@ -207,17 +255,26 @@ Return ONLY valid JSON in this exact format:
   "recommendations": ["Recommendation 1", "Recommendation 2"]
 }`;
 
+const INSIGHTS_JSON_FORMAT_PROMPT = `The response must match this JSON shape exactly:
+{
+  "summary": "string",
+  "anomalies": ["string"],
+  "recommendations": ["string"]
+}
+summary must be a string. anomalies and recommendations must be arrays of strings only. Never return objects inside anomalies or recommendations.`;
+
 export const generateInsights = async (
   prompt: string,
   context: object
 ): Promise<InsightResponse> => {
   const sanitizedContext = stripPii(context);
   const userMessage = JSON.stringify({ context: sanitizedContext });
+  const systemPrompt = [prompt || INSIGHTS_SYSTEM_PROMPT, INSIGHTS_JSON_FORMAT_PROMPT].join("\n\n");
 
   const rawText = await withRetry(() =>
-    requestChatCompletion(prompt || INSIGHTS_SYSTEM_PROMPT, userMessage, true)
+    requestChatCompletion(systemPrompt, userMessage, true)
   );
-  return parseJson<InsightResponse>(rawText);
+  return normalizeInsightResponse(parseJson<unknown>(rawText));
 };
 
 // ═══════════════════════════════════════════════════════════════
