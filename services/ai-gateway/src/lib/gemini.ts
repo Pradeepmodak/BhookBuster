@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ═══════════════════════════════════════════════════════════════
-//  Chat Completions (OpenRouter/OpenAI-compatible)
+//  Chat Completions (Groq OpenAI-compatible)
 // ═══════════════════════════════════════════════════════════════
 
 const requestChatCompletion = async (
@@ -12,18 +12,16 @@ const requestChatCompletion = async (
   userPrompt: string,
   jsonMode = true
 ): Promise<string> => {
-  const rawKey = 
-    process.env.OPENAI_API_KEY || 
-    process.env.OPENROUTER_API_KEY || 
-    process.env.GROQ_API_KEY || 
-    process.env.GEMINI_API_KEY;
+  const rawKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+  const baseUrl =
+    process.env.GROQ_BASE_URL ||
+    process.env.OPENAI_BASE_URL ||
+    "https://api.groq.com/openai/v1/chat/completions";
     
-  const apiKey = rawKey?.trim();
-    
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1/chat/completions";
+  const apiKey = rawKey?.trim().replace(/^Bearer\s+/i, "").replace(/^["']|["']$/g, "");
 
   if (!apiKey) {
-    throw new Error("Chat completion API Key is not configured (set OPENROUTER_API_KEY or OPENAI_API_KEY)");
+    throw new Error("Chat completion API Key is not configured (set GROQ_API_KEY)");
   }
 
   const messages = [];
@@ -39,8 +37,7 @@ const requestChatCompletion = async (
   };
 
   if (jsonMode) {
-    // OpenRouter and many OSS models support json_object, but if they don't, 
-    // the system prompt still enforces it.
+    // Groq supports json_object for structured outputs; the prompt also enforces it.
     body.response_format = { type: "json_object" };
   }
 
