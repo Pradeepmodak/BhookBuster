@@ -24,7 +24,7 @@ export const serviceAuth = (
   res: any,
   next: any
 ) => {
-  const secret = process.env.GATEWAY_HMAC_SECRET;
+  const secret = process.env.GATEWAY_HMAC_SECRET?.trim();
   const signature = req.get("X-Service-Signature");
 
   if (!secret || !signature || !req.rawBody) {

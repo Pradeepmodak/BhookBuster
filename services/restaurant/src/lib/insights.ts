@@ -30,7 +30,7 @@ export const stripAnalyticsPii = (value: unknown): unknown => {
 };
 
 const signBody = (rawBody: string) => {
-  const secret = process.env.GATEWAY_HMAC_SECRET;
+  const secret = process.env.GATEWAY_HMAC_SECRET?.trim();
   if (!secret) {
     throw new Error("GATEWAY_HMAC_SECRET is not configured");
   }
@@ -42,7 +42,7 @@ const requestInsights = async (
   prompt: string,
   context: object
 ): Promise<InsightResponse> => {
-  const gatewayUrl = process.env.AI_GATEWAY_URL;
+  const gatewayUrl = process.env.AI_GATEWAY_URL?.trim();
   if (!gatewayUrl) {
     throw new Error("AI_GATEWAY_URL is not configured");
   }

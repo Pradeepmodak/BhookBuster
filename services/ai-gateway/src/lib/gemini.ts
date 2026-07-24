@@ -12,11 +12,13 @@ const requestChatCompletion = async (
   userPrompt: string,
   jsonMode = true
 ): Promise<string> => {
-  const apiKey = 
+  const rawKey = 
     process.env.OPENAI_API_KEY || 
     process.env.OPENROUTER_API_KEY || 
     process.env.GROQ_API_KEY || 
     process.env.GEMINI_API_KEY;
+    
+  const apiKey = rawKey?.trim();
     
   const baseUrl = process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1/chat/completions";
 
@@ -72,10 +74,11 @@ const requestChatCompletion = async (
 // ═══════════════════════════════════════════════════════════════
 
 const getGeminiClient = () => {
-  const apiKey =
+  const rawKey =
     process.env.GOOGLE_AI_API_KEY ||
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY;
+  const apiKey = rawKey?.trim();
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }

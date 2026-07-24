@@ -24,9 +24,9 @@ if(!CLOUD_NAME || !CLOUD_API_KEY || !CLOUD_API_SECRET) {
   throw new Error('Cloudinary configuration is missing');
 }
 cloudinary.v2.config({
-  cloud_name: CLOUD_NAME,
-  api_key: CLOUD_API_KEY,
-  api_secret:CLOUD_API_SECRET
+  cloud_name: CLOUD_NAME?.trim(),
+  api_key: CLOUD_API_KEY?.trim(),
+  api_secret: CLOUD_API_SECRET?.trim()
 });
 
 app.use('/api', cloudinaryRoutes);
