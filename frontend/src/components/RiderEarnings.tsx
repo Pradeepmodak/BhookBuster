@@ -191,7 +191,7 @@ const RiderEarnings = ({ profile }: { profile: IRider | null }) => {
           Monthly Earnings
         </h3>
         <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={256}>
             <BarChart
               data={analytics.monthlyData}
               margin={{ top: 0, right: 0, left: -20, bottom: 0 }}

@@ -355,7 +355,7 @@ const Admin = () => {
                         <h2 className="text-sm font-semibold">Revenue Trend</h2>
                       </div>
                       <div className="h-[200px] w-full overflow-hidden">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={200}>
                           <AreaChart data={ordersTrend} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="adminRevenue" x1="0" x2="0" y1="0" y2="1">
@@ -380,7 +380,7 @@ const Admin = () => {
                         <h2 className="text-sm font-semibold">Orders Trend</h2>
                       </div>
                       <div className="h-[180px] w-full overflow-hidden">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={180}>
                           <BarChart data={ordersTrend} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                             <CartesianGrid stroke="#262626" vertical={false} strokeDasharray="3 3" />
                             <XAxis dataKey="label" stroke="#737373" fontSize={12} tickLine={false} axisLine={false} />

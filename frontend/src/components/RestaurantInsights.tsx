@@ -244,7 +244,7 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
             <p className="text-xs text-neutral-400">Daily paid order revenue</p>
           </div>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={288}>
               <LineChart data={revenue?.dailyRevenue || []} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#737373' }} dy={10} />
@@ -267,7 +267,7 @@ const RestaurantInsights = ({ restaurantId }: { restaurantId: string }) => {
             <p className="text-xs text-neutral-400">Revenue by method</p>
           </div>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={288}>
               <BarChart data={revenue?.paymentMethodSplit || []} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="method" tick={{ fontSize: 10, fill: '#737373' }} dy={10} />

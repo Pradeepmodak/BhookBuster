@@ -841,9 +841,14 @@ export const askAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "question is required" });
     }
 
-    const template = await classifyAskTemplate(question);
+    let template: AskTemplate | null;
+    try {
+      template = await classifyAskTemplate(question);
+    } catch {
+      return res.status(503).json({ error: "AI analytics service is temporarily unavailable. Please try again later." });
+    }
     if (!template) {
-      return res.status(400).json({ error: "I cannot answer that yet." });
+      return res.status(400).json({ error: "I cannot answer that yet. Try asking about revenue, top dishes, peak hours, or customer retention." });
     }
 
     const templateConfig = getTemplateConfig(template);
@@ -883,17 +888,26 @@ export const askAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
       };
     }
 
-    const narrative = await generateInsights(
-      {
-        context: scopeLabel === "platform" ? "Admin Platform (All Restaurants)" : `Single Restaurant Dashboard (ID: ${restaurantId})`,
-        question,
-        template,
-        results,
-        platformData,
-      },
-      `ask:${scopeLabel}:${template}`,
-      "You are a world-class AI business analyst assisting a restaurant owner or platform admin. Provide an attractive, engaging, and highly informative answer to their question using the provided results. Emphasize key metrics with formatting. Maintain the context of whether this is for the entire platform or a single restaurant. Use the Indian Rupee symbol (₹) or 'Rs.' for all currency values, never use the Dollar ($) sign. Put your conversational, styled answer in the 'summary' field. If there are anomalies, put them in 'anomalies'. Give actionable 'recommendations' based on the answer."
-    );
+    let narrative: InsightResponse;
+    try {
+      narrative = await generateInsights(
+        {
+          context: scopeLabel === "platform" ? "Admin Platform (All Restaurants)" : `Single Restaurant Dashboard (ID: ${restaurantId})`,
+          question,
+          template,
+          results,
+          platformData,
+        },
+        `ask:${scopeLabel}:${template}`,
+        "You are a world-class AI business analyst assisting a restaurant owner or platform admin. Provide an attractive, engaging, and highly informative answer to their question using the provided results. Emphasize key metrics with formatting. Maintain the context of whether this is for the entire platform or a single restaurant. Use the Indian Rupee symbol (₹) or 'Rs.' for all currency values, never use the Dollar ($) sign. Put your conversational, styled answer in the 'summary' field. If there are anomalies, put them in 'anomalies'. Give actionable 'recommendations' based on the answer."
+      );
+    } catch {
+      narrative = {
+        summary: "Analytics data retrieved successfully. AI narrative is temporarily unavailable.",
+        anomalies: [],
+        recommendations: [],
+      };
+    }
 
     return res.json({
       template,

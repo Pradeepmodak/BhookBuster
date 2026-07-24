@@ -172,7 +172,7 @@ const PlatformInsights = () => {
             <p className="text-xs text-neutral-400">Daily paid order revenue</p>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={256}>
               <LineChart data={analytics?.revenue.dailyRevenue || []} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: "#737373", fontSize: 10 }} dy={10} />
@@ -190,7 +190,7 @@ const PlatformInsights = () => {
             <p className="text-xs text-neutral-400">Revenue per restaurant</p>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={256}>
               <BarChart data={analytics?.topRestaurants || []} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="restaurantName" tick={{ fill: "#737373", fontSize: 10 }} dy={10} tickFormatter={(value) => value.length > 12 ? value.substring(0, 12) + '...' : value} />
