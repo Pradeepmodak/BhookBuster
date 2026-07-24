@@ -746,13 +746,18 @@ export const insightsAnalytics = TryCatch(
   }
 );
 
-export const extractAskTemplate = (
-  insight: InsightResponse
-): AskTemplate | null => {
+export const extractAskTemplate = (insight: InsightResponse): AskTemplate | null => {
+  const summaryStr = typeof insight?.summary === "string" ? insight.summary : "";
+  const templateId = summaryStr.trim().toLowerCase();
+  const template = ASK_TEMPLATES.find((t) => t.id === templateId);
+  if (template) {
+    return template.id as AskTemplate;
+  }
+
   const haystack = [
-    insight.summary,
-    ...(insight.anomalies || []),
-    ...(insight.recommendations || []),
+    summaryStr,
+    ...(Array.isArray(insight?.anomalies) ? insight.anomalies : []),
+    ...(Array.isArray(insight?.recommendations) ? insight.recommendations : []),
   ]
     .join(" ")
     .toLowerCase();
@@ -762,7 +767,7 @@ export const extractAskTemplate = (
   }
 
   return (
-    ASK_TEMPLATE_IDS.find((template) => haystack.includes(template)) || null
+    ASK_TEMPLATE_IDS.find((t) => haystack.includes(t)) || null
   );
 };
 

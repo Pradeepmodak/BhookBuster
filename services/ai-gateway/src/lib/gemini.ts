@@ -204,10 +204,10 @@ export const generateInsights = async (
   context: object
 ): Promise<InsightResponse> => {
   const sanitizedContext = stripPii(context);
-  const userMessage = JSON.stringify({ prompt, context: sanitizedContext });
+  const userMessage = JSON.stringify({ context: sanitizedContext });
 
   const rawText = await withRetry(() =>
-    requestChatCompletion(INSIGHTS_SYSTEM_PROMPT, userMessage, true)
+    requestChatCompletion(prompt || INSIGHTS_SYSTEM_PROMPT, userMessage, true)
   );
   return parseJson<InsightResponse>(rawText);
 };
