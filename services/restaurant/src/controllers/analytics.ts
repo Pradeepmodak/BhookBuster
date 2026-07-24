@@ -849,8 +849,9 @@ export const askAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
     let template: AskTemplate | null;
     try {
       template = await classifyAskTemplate(question);
-    } catch {
-      return res.status(503).json({ error: "AI analytics service is temporarily unavailable. Please try again later." });
+    } catch (error: any) {
+      console.error("[askAnalytics] classifyAskTemplate error:", error);
+      return res.status(503).json({ error: `AI classification failed: ${error.message || "Unknown error"}` });
     }
     if (!template) {
       return res.status(400).json({ error: "I cannot answer that yet. Try asking about revenue, top dishes, peak hours, or customer retention." });
