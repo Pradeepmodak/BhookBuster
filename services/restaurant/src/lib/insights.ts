@@ -64,8 +64,10 @@ const requestInsights = async (
     );
     return data;
   } catch (error: any) {
-    console.error("[requestInsights Error]:", error.response?.data || error.message || error);
-    throw new Error(error.response?.data?.message || error.message);
+    const data = error.response?.data;
+    const errorMessage = data?.message || data?.error?.message || error.message;
+    console.error("[requestInsights Error]:", data || errorMessage || error);
+    throw new Error(errorMessage);
   }
 };
 
