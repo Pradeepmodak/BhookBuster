@@ -43,7 +43,7 @@ const ASK_TEMPLATES: Array<{ id: AskTemplate; adminOnly?: boolean }> = [
 ];
 
 const ASK_TEMPLATE_IDS = ASK_TEMPLATES.map((template) => template.id);
-const DEFAULT_LOOKBACK_DAYS = 30;
+const DEFAULT_LOOKBACK_DAYS = 365;
 const INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — preserve free-tier quota
 const insightsCache = new Map<
   string,
