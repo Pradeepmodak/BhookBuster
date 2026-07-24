@@ -24,9 +24,17 @@ const requestChatCompletion = async (
     throw new Error("Chat completion API Key is not configured (set GROQ_API_KEY)");
   }
 
+  const hasJsonInstruction = /\bjson\b/i.test(
+    [systemPrompt, userPrompt].filter(Boolean).join(" ")
+  );
+  const effectiveSystemPrompt =
+    jsonMode && !hasJsonInstruction
+      ? `${systemPrompt || ""}\n\nReturn only valid JSON.`
+      : systemPrompt;
+
   const messages = [];
-  if (systemPrompt) {
-    messages.push({ role: "system", content: systemPrompt });
+  if (effectiveSystemPrompt) {
+    messages.push({ role: "system", content: effectiveSystemPrompt });
   }
   messages.push({ role: "user", content: userPrompt });
 
