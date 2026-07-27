@@ -174,25 +174,23 @@ export const fetchAdminStats = async () => {
       const ordersCount = paidOrders.length;
 
       const currentRevenue = paidOrders
-        .filter((order: any) => order.createdAt && new Date(order.createdAt) >= currentStart)
+        .filter((order: any) => order.createdAt && new Date(order.createdAt) >= new Date(0)) // all time up to now
         .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
 
       const previousRevenue = paidOrders
         .filter((order: any) => {
           if (!order.createdAt) return false;
           const createdAt = new Date(order.createdAt);
-          return createdAt >= previousStart && createdAt <= previousEnd;
+          return createdAt <= previousEnd; // all time up to 30 days ago
         })
         .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
 
-      const currentOrders = paidOrders.filter(
-        (order: any) => order.createdAt && new Date(order.createdAt) >= currentStart,
-      ).length;
+      const currentOrders = paidOrders.length;
 
       const previousOrders = paidOrders.filter((order: any) => {
         if (!order.createdAt) return false;
         const createdAt = new Date(order.createdAt);
-        return createdAt >= previousStart && createdAt <= previousEnd;
+        return createdAt <= previousEnd;
       }).length;
 
       const peakOrderBuckets = new Map<number, number>();
