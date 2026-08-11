@@ -401,9 +401,35 @@ export const homeRecommendations = TryCatch(
       forYou = scoredItems.slice(0, limit);
     }
 
+    const forYouIds = forYou.map(item => item._id.toString());
+    const otherDishesCandidate = await MenuItems.find({
+      isAvailable: true,
+      restaurantId: { $in: restaurantIds },
+      _id: { $nin: forYouIds }
+    }).limit(24).lean();
+
+    const otherDishes = otherDishesCandidate.map((item: any) => {
+      const restaurant = popularNearby.find((r: any) => r._id.toString() === item.restaurantId.toString());
+      return {
+        ...item,
+        _id: item._id.toString(),
+        restaurantId: item.restaurantId.toString(),
+        restaurant: restaurant ? {
+          _id: restaurant._id,
+          name: restaurant.name,
+          image: restaurant.image,
+          isOpen: restaurant.isOpen,
+          isVerified: restaurant.isVerified,
+          autoLocation: restaurant.autoLocation,
+        } : null,
+        distanceKm: restaurant ? restaurant.distanceKm : 0,
+      };
+    }).filter(item => item.restaurant !== null);
+
     return res.json({
       forYou,
       popularNearby,
+      otherDishes,
     });
   }
 );

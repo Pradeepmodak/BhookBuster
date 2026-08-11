@@ -27,6 +27,7 @@ const Home = () => {
   const [semanticResults, setSemanticResults] = useState<any[]>([]);
   const [semanticRestaurantResults, setSemanticRestaurantResults] = useState<any[]>([]);
   const [forYou, setForYou] = useState<any[]>([]);
+  const [otherDishes, setOtherDishes] = useState<any[]>([]);
 
   const getDistanceKm = ({
     lat1,
@@ -119,6 +120,7 @@ const Home = () => {
           if (!signal?.aborted) {
             setRestaurants(data.popularNearby ?? []);
             setForYou(data.forYou ?? []);
+            setOtherDishes(data.otherDishes ?? []);
           }
         } else {
           const { data } = await axios.get(`${restaurantService}/api/restaurant/all`, {
@@ -132,6 +134,7 @@ const Home = () => {
           if (!signal?.aborted) {
             setRestaurants(data.restaurants ?? []);
             setForYou([]);
+            setOtherDishes([]);
           }
         }
       }
@@ -328,7 +331,7 @@ const Home = () => {
 
 
       {/* For You Personalized Recommendations */}
-      {forYou.length > 0 && !search && (
+      {!search && searchType === "dishes" && (
         <section className="mb-10 mt-8">
           <div className="mb-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#facc15]/20 bg-[#facc15]/10 px-3 py-1 text-xs font-semibold text-[#facc15] uppercase tracking-wider mb-2">
@@ -338,25 +341,31 @@ const Home = () => {
             <h2 className="text-2xl font-bold text-white">AI Tailored Recommendations 'For You'</h2>
             <p className="text-sm text-neutral-400">Based on your past orders, clicks, and taste profile</p>
           </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {forYou.slice(0, 6).map((item) => {
-              const [resLng, resLat] = item.restaurant.autoLocation?.coordinates || [0, 0];
-              const distance = (resLng && resLat) ? getDistanceKm({
-                lat1: location.latitude,
-                lon1: location.longitude,
-                lat2: resLat,
-                lon2: resLng,
-              }) : undefined;
+          {forYou.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {forYou.slice(0, 6).map((item) => {
+                const [resLng, resLat] = item.restaurant.autoLocation?.coordinates || [0, 0];
+                const distance = (resLng && resLat) ? getDistanceKm({
+                  lat1: location.latitude,
+                  lon1: location.longitude,
+                  lat2: resLat,
+                  lon2: resLng,
+                }) : undefined;
 
-              return (
-                <DishSearchResultCard
-                  key={item._id}
-                  dish={item}
-                  restaurant={{ ...item.restaurant, distanceKm: distance }}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <DishSearchResultCard
+                    key={item._id}
+                    dish={item}
+                    restaurant={{ ...item.restaurant, distanceKm: distance }}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+              Start ordering to build your AI taste profile, or search for a specific dish above.
+            </div>
+          )}
         </section>
       )}
 
@@ -428,23 +437,21 @@ const Home = () => {
         /* Recommended Dishes list */
         <>
           <div className="mb-6 mt-8">
-            <h2 className="text-2xl font-semibold">Recommended for you</h2>
+            <h2 className="text-2xl font-semibold">Other dishes near you</h2>
             <p className="mt-1 text-neutral-400">
-              {forYou.length > 0
-                ? `${forYou.length} dishes based on your AI taste profile`
-                : "Discover dishes based on your taste"}
+              Discover more dishes from restaurants around you
             </p>
           </div>
 
-          {forYou.length > 0 ? (
+          {otherDishes.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {forYou.map((item) => (
+              {otherDishes.map((item) => (
                 <DishSearchResultCard key={item._id} dish={item} restaurant={item.restaurant} />
               ))}
             </div>
           ) : (
             <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
-              Start ordering to build your AI taste profile, or search for a specific dish above.
+              No other dishes found near you at the moment.
             </div>
           )}
         </>
