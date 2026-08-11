@@ -6,6 +6,9 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import { generateRestaurantEmbedding, toStringArray } from "../lib/embeddings.js";
 
+const getUtilsServiceUrl = () =>
+  process.env.UTILS_SERVICE_URL || process.env.UTILS_SERVICE || "http://localhost:7000";
+
 export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => {
     const user = req.user;
     if (!user) {
@@ -45,7 +48,8 @@ export const addRestaurant = TryCatch(async (req: AuthenticatedRequest, res) => 
         });
     }
 
-    const { data: uploadResult } = await axios.post(`${process.env.UTILS_SERVICE}/api/upload`, {
+    const utilsServiceUrl = getUtilsServiceUrl();
+    const { data: uploadResult } = await axios.post(`${utilsServiceUrl}/api/upload`, {
         buffer: fileBuffer.content,
     },
     {
@@ -192,8 +196,9 @@ export const updateRestaurantImage = TryCatch(async (req: AuthenticatedRequest, 
     }
 
     // Upload image to utils microservice
+    const utilsServiceUrl = getUtilsServiceUrl();
     const { data: uploadResult } = await axios.post(
-        `${process.env.UTILS_SERVICE}/api/upload`,
+        `${utilsServiceUrl}/api/upload`,
         { buffer: fileBuffer.content },
         {
             headers: {

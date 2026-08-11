@@ -8,6 +8,8 @@ import MenuItems from "../models/MenuItems.js";
 import { generateMenuEmbedding, toStringArray } from "../lib/embeddings.js";
 import { redisClient } from "../config/redis.js";
 
+const getUtilsServiceUrl = () =>
+    process.env.UTILS_SERVICE_URL || process.env.UTILS_SERVICE || "http://localhost:7000";
 
 /**
  * Adds a new menu item to a restaurant.
@@ -67,7 +69,8 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
 
     // 5. Upload image to the utilities service
     console.log("Uploading file to utils service...");
-    const { data: uploadResult } = await axios.post(`${process.env.UTILS_SERVICE}/api/upload`, {
+    const utilsServiceUrl = getUtilsServiceUrl();
+    const { data: uploadResult } = await axios.post(`${utilsServiceUrl}/api/upload`, {
         buffer: fileBuffer.content,
     },
     {
@@ -340,8 +343,9 @@ export const updateMenuItem = TryCatch(async (req: AuthenticatedRequest, res) =>
             });
         }
 
+        const utilsServiceUrl = getUtilsServiceUrl();
         const { data: uploadResult } = await axios.post(
-            `${process.env.UTILS_SERVICE}/api/upload`,
+            `${utilsServiceUrl}/api/upload`,
             { buffer: fileBuffer.content },
             {
                 headers: {
