@@ -2,6 +2,7 @@ import { createClient, type RedisClientType } from "redis";
 
 let client: RedisClientType | null = null;
 let ready = false;
+let connectionAttempted = false;
 
 const getRedisUrl = () => process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
@@ -12,12 +13,24 @@ export const CACHE_TTL = {
 } as const;
 
 export const connectRedis = async () => {
+  // If already connected and ready, return the client
   if (client && ready) {
     return client;
   }
 
+  // If we already tried and failed, don't keep retrying on every request
+  if (connectionAttempted && !ready) {
+    return null;
+  }
+
+  connectionAttempted = true;
+
   try {
-    client = createClient({ url: getRedisUrl(), socket: { reconnectStrategy: false } });
+    const url = getRedisUrl();
+    // Validate URL before attempting connection
+    new URL(url);
+
+    client = createClient({ url, socket: { reconnectStrategy: false, connectTimeout: 5000 } });
 
     client.on("error", (error: any) => {
       ready = false;
@@ -34,9 +47,10 @@ export const connectRedis = async () => {
     }
 
     return client;
-  } catch (_error) {
+  } catch (_error: any) {
     ready = false;
-    console.warn("Redis unavailable for rider service, continuing without cache.");
+    client = null;
+    console.warn("Redis unavailable for rider service, continuing without cache.", _error?.message);
     return null;
   }
 };
@@ -102,4 +116,3 @@ export const withCache = async <T>({
   await setCache(key, data, ttl);
   return { data, cached: false };
 };
-
