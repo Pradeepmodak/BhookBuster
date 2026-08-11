@@ -100,7 +100,7 @@ export const addMenuItem = TryCatch(async (req: AuthenticatedRequest, res) => {
     }
 
     // 8. Invalidate Redis cache to ensure the client gets fresh menu data
-    await redisClient.del(`menu:${restaurant._id.toString()}`);
+    await redisClient?.del(`menu:${restaurant._id.toString()}`);
 
     res.status(201).json({
         message:"Item added Successfully",
@@ -133,7 +133,7 @@ export const getAllItems = TryCatch(async (req: AuthenticatedRequest, res) => {
 
     try {
         // Try to get from cache
-        const cachedMenu = await redisClient.get(`menu:${id}`);
+        const cachedMenu = await redisClient?.get(`menu:${id}`);
         if (cachedMenu) {
             return res.status(200).json(JSON.parse(cachedMenu));
         }
@@ -155,7 +155,7 @@ export const getAllItems = TryCatch(async (req: AuthenticatedRequest, res) => {
             
             try {
                 // Try to set cache, but don't fail the request if Redis is down
-                await redisClient.setex(`menu:${id}`, 3600, JSON.stringify(items));
+                await redisClient?.setex(`menu:${id}`, 3600, JSON.stringify(items));
             } catch (redisError) {
                 console.warn(`⚠️ Redis SETEX failed for menu:${id}.`, redisError);
             }
@@ -219,7 +219,7 @@ export const deleteMenuItem = TryCatch(async(req:AuthenticatedRequest, res)=>{
 
     // 4. Delete item and clear associated cache
     await item.deleteOne();
-    await redisClient.del(`menu:${restaurant._id.toString()}`);
+    await redisClient?.del(`menu:${restaurant._id.toString()}`);
 
     res.status(200).json({
         message:"Menu item deleted successfully",
@@ -270,7 +270,7 @@ export const toggleMenuItemAvailability=TryCatch(async(req:AuthenticatedRequest,
     // 4. Toggle and save availability state, then invalidate cache
     item.isAvailable=!item.isAvailable;
     await item.save();
-    await redisClient.del(`menu:${restaurant._id.toString()}`);
+    await redisClient?.del(`menu:${restaurant._id.toString()}`);
 
     res.status(200).json({
         message:`Item Marked as ${item.isAvailable ? "available" : "unavailable"}`,
