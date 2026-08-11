@@ -432,7 +432,7 @@ const Home = () => {
           {forYou.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {forYou.map((item) => (
-                <DishSearchResultCard key={item._id} item={item} />
+                <DishSearchResultCard key={item._id} dish={item} restaurant={item.restaurant} />
               ))}
             </div>
           ) : (
