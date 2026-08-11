@@ -775,26 +775,43 @@ const getTemplateConfig = (template: AskTemplate) =>
   ASK_TEMPLATES.find((candidate) => candidate.id === template);
 
 const classifyAskTemplate = async (question: string) => {
-  const classification = await generateInsights(
-    {
-      question,
-      available_templates: ASK_TEMPLATE_IDS,
-      descriptions: {
-        top_dishes_by_revenue: "Most sold items, top dishes, best sellers, top foods",
-        revenue_trend: "Revenue trend, sales over time, daily sales",
-        peak_hours: "Busiest times, peak hours, most active time",
-        repeat_customer_rate: "Customer retention, repeat customers",
-        cancellation_rate: "Cancelled orders, cancellation rate",
-        payment_method_split: "Payment methods, COD vs online",
-        rider_delivery_time: "Rider speed, delivery times",
-        top_restaurants: "Top restaurants, best performing restaurant, highest revenue restaurant"
-      }
-    },
-    "analytics-template-classification",
-    "You must classify the user's question into EXACTLY ONE of the provided available_templates. Output the exact template id string in the 'summary' field. Do not explain."
-  );
+  try {
+    const classification = await generateInsights(
+      {
+        question,
+        available_templates: ASK_TEMPLATE_IDS,
+        descriptions: {
+          top_dishes_by_revenue: "Most sold items, top dishes, best sellers, top foods",
+          revenue_trend: "Revenue trend, sales over time, daily sales",
+          peak_hours: "Busiest times, peak hours, most active time",
+          repeat_customer_rate: "Customer retention, repeat customers",
+          cancellation_rate: "Cancelled orders, cancellation rate",
+          payment_method_split: "Payment methods, COD vs online",
+          rider_delivery_time: "Rider speed, delivery times",
+          top_restaurants: "Top restaurants, best performing restaurant, highest revenue restaurant"
+        }
+      },
+      "analytics-template-classification",
+      "You must classify the user's question into EXACTLY ONE of the provided available_templates. Output the exact template id string in the 'summary' field. Do not explain."
+    );
 
-  return extractAskTemplate(classification);
+    return extractAskTemplate(classification);
+  } catch (error: any) {
+    console.warn("⚠️ AI classification failed (429/timeout), using local keyword matching fallback:", error.message);
+    
+    // Fallback: simple keyword matching
+    const q = question.toLowerCase();
+    if (q.includes("restaurant") || q.includes("top restaurant")) return "top_restaurants";
+    if (q.includes("dish") || q.includes("food") || q.includes("item") || q.includes("sold")) return "top_dishes_by_revenue";
+    if (q.includes("revenue") || q.includes("sales") || q.includes("trend")) return "revenue_trend";
+    if (q.includes("peak") || q.includes("busy") || q.includes("time") || q.includes("hour")) return "peak_hours";
+    if (q.includes("repeat") || q.includes("retention") || q.includes("customer")) return "repeat_customer_rate";
+    if (q.includes("cancel")) return "cancellation_rate";
+    if (q.includes("payment") || q.includes("cash") || q.includes("online") || q.includes("cod")) return "payment_method_split";
+    if (q.includes("rider") || q.includes("delivery time") || q.includes("speed") || q.includes("fast")) return "rider_delivery_time";
+    
+    return null;
+  }
 };
 
 const executeAskTemplate = async (
@@ -846,13 +863,7 @@ export const askAnalytics = TryCatch(async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "question is required" });
     }
 
-    let template: AskTemplate | null;
-    try {
-      template = await classifyAskTemplate(question);
-    } catch (error: any) {
-      console.error("[askAnalytics] classifyAskTemplate error:", error);
-      return res.status(503).json({ error: `AI classification failed: ${error.message || "Unknown error"}` });
-    }
+    let template: AskTemplate | null = await classifyAskTemplate(question);
     if (!template) {
       return res.status(400).json({ error: "I cannot answer that yet. Try asking about revenue, top dishes, peak hours, or customer retention." });
     }
