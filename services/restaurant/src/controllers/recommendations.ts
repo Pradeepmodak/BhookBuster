@@ -401,6 +401,10 @@ export const homeRecommendations = TryCatch(
       forYou = scoredItems.slice(0, limit);
     }
 
+    // Limit to 6 items since the frontend carousel only displays 6. 
+    // This allows the rest of the matches to flow into `otherDishes`.
+    forYou = forYou.slice(0, 6);
+
     const forYouIds = forYou.map(item => item._id.toString());
     const otherDishesCandidate = await MenuItems.find({
       isAvailable: true,
