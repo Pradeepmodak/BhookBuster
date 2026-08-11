@@ -123,7 +123,7 @@ const RiderOrderMap = ({ order }: Props) => {
         // This targets the specific customer tracking their order, avoiding global broadcasts.
         if (socket) {
           socket.emit("rider:location", {
-            room: `user:${order.userId}`,
+            room: `order:${order._id}`,
             payload: { latitude, longitude },
           });
         }
@@ -138,7 +138,7 @@ const RiderOrderMap = ({ order }: Props) => {
     // INTERVIEW TALKING POINT: Cleanup watcher. Clearing the watch position on component unmount
     // ensures the rider's phone battery isn't drained when they leave the tracking page.
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [hasDeliveryLocation, order.userId, socket]);
+  }, [hasDeliveryLocation, order._id, socket]);
 
   if (!hasDeliveryLocation || !riderLocation) return null;
 
