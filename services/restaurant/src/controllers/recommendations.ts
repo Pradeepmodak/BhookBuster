@@ -352,6 +352,10 @@ export const homeRecommendations = TryCatch(
           limit,
         }) as any[]
       );
+
+      if (!forYou || forYou.length === 0) {
+        throw new Error("Vector search returned 0 results, attempting fallback");
+      }
     } catch (error) {
       console.warn("MongoDB $vectorSearch failed in homeRecommendations, using JS similarity fallback:", error);
       

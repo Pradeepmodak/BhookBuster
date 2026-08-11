@@ -6,6 +6,7 @@ import axios from "axios";
 import { restaurantService } from "../config";
 import RestaurantCard from "../components/RestaurantCard";
 import DishSearchResultCard from "../components/DishSearchResultCard";
+import { captureFoodEvent } from "../utils/foodEvents";
 import { motion } from "framer-motion";
 import { FiFilter, FiMapPin, FiSearch, FiStar, FiTrendingUp, FiZap } from "react-icons/fi";
 
@@ -90,6 +91,12 @@ const Home = () => {
             setSemanticResults([]);
           }
           setRestaurants([]);
+          
+          // Track search event to build AI Taste Profile
+          captureFoodEvent({
+            eventType: "search",
+            query: search,
+          });
         }
       } else {
         if (!signal?.aborted) {
