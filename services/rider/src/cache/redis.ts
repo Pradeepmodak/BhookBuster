@@ -17,7 +17,7 @@ export const connectRedis = async () => {
   }
 
   try {
-    client = createClient({ url: getRedisUrl() });
+    client = createClient({ url: getRedisUrl(), socket: { reconnectStrategy: false } });
 
     client.on("error", (error: any) => {
       ready = false;
@@ -102,3 +102,4 @@ export const withCache = async <T>({
   await setCache(key, data, ttl);
   return { data, cached: false };
 };
+
