@@ -358,7 +358,7 @@ export const fetchDeliveryQueue = TryCatch(async (req: AuthenticatedRequest, res
     params: {
       latitude,
       longitude,
-      maxDistance: 5000,
+      maxDistance: 50000000, // 50,000 km (global radius for testing)
     },
     headers: {
       "x-internal-key": process.env.INTERNAL_SERVICE_KEY,
