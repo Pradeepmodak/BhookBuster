@@ -54,7 +54,11 @@ export const addRiderProfile = TryCatch (
           `${utilsServiceUrl}/api/upload`,
           {
             buffer: fileBuffer.content,
-
+          },
+          {
+            headers: {
+              Authorization: req.headers.authorization as string,
+            }
           }
         );
         riderImage = uploadResult.url;
@@ -411,7 +415,8 @@ export const updateRiderProfile = TryCatch(async (req: AuthenticatedRequest, res
     if (utilsServiceUrl) {
       const { data: uploadResult } = await axios.post(
         `${utilsServiceUrl}/api/upload`,
-        { buffer: fileBuffer.content }
+        { buffer: fileBuffer.content },
+        { headers: { Authorization: req.headers.authorization as string } }
       );
       rider.picture = uploadResult.url;
     }
