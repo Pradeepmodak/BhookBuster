@@ -230,7 +230,15 @@ const Home = () => {
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-[#0f0f0f]">
-        <p className="text-gray-400">Finding restaurants near you...</p>
+        <p className="text-gray-400">
+          {search.trim()
+            ? searchType === "dishes"
+              ? "Finding matching dishes..."
+              : "Finding matching restaurants..."
+            : searchType === "dishes"
+              ? "Loading recommended dishes..."
+              : "Finding restaurants near you..."}
+        </p>
       </div>
     );
   }
@@ -409,6 +417,30 @@ const Home = () => {
             </div>
           )
         )
+      ) : searchType === "dishes" ? (
+        /* Recommended Dishes list */
+        <>
+          <div className="mb-6 mt-8">
+            <h2 className="text-2xl font-semibold">Recommended for you</h2>
+            <p className="mt-1 text-neutral-400">
+              {forYou.length > 0
+                ? `${forYou.length} dishes based on your AI taste profile`
+                : "Discover dishes based on your taste"}
+            </p>
+          </div>
+
+          {forYou.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {forYou.map((item) => (
+                <DishSearchResultCard key={item._id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-[#171717] px-6 py-14 text-center text-neutral-400">
+              Start ordering to build your AI taste profile, or search for a specific dish above.
+            </div>
+          )}
+        </>
       ) : (
         /* Normal Restaurants list */
         <>
